@@ -8,6 +8,7 @@ class MedicalAppointment(Base):
     __tablename__ = "medical_appointments"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    appointment_type = Column(String(30), nullable=False, default="MEDICO", index=True)  # MEDICO, LABORATORIO, ECO
     appointment_date = Column(DateTime, nullable=False, index=True)
     doctor_or_clinic = Column(String(120), nullable=False)
     specialty = Column(String(80), default="Ginecología y Obstetricia")
@@ -29,7 +30,7 @@ class MedicalStudy(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     appointment_id = Column(Integer, ForeignKey("medical_appointments.id", ondelete="SET NULL"), nullable=True)
-    study_type = Column(String(30), nullable=False, index=True)  # LABORATORIO, ULTRASONIDO, RECETA, DOCUMENTO_CLINICO
+    study_type = Column(String(30), nullable=False, index=True)  # LABORATORIO, ULTRASONIDO, RECETA, DIAGNOSTICO, DOCUMENTO_CLINICO
     title = Column(String(150), nullable=False)
     study_date = Column(Date, nullable=False)
     gestational_week = Column(Integer, nullable=False)

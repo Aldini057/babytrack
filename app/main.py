@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.database import engine, Base, get_db, SessionLocal
+from app.database import engine, Base, get_db, SessionLocal, ensure_schema_migrations
 from app.seed import seed_database
 from app.models.journal import BabyJournalNote
 from app.models.medical import MedicalAppointment, MedicalStudy
@@ -25,8 +25,9 @@ from app.services.obstetric_calculator import ObstetricCalculatorService
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Inicialización de tablas y sembrado al arranque
+    # Inicialización de tablas, migraciones aditivas seguras y sembrado al arranque
     Base.metadata.create_all(bind=engine)
+    ensure_schema_migrations(engine)
     db = SessionLocal()
     try:
         seed_database(db)
@@ -155,7 +156,7 @@ def render_medical(request: Request, db: Session = Depends(get_db)):
     """Renderiza el Módulo de Control Prenatal, Estudios Híbridos y Galería de Ecos."""
     record = get_or_create_settings(db)
     studies = list_studies(study_type=None, appointment_id=None, db=db)
-    appointments = list_appointments(status_filter=None, db=db)
+    appointments = list_appointments(status_filter=None, type_filter=None, db=db)
     today_iso = ObstetricCalculatorService.get_local_date().isoformat()
 
     return templates.TemplateResponse(

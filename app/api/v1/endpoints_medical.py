@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models.medical import MedicalAppointment, MedicalStudy, StudyAttachment
 from app.schemas.medical_schema import (
     VALID_APPOINTMENT_STATUSES,
+    VALID_APPOINTMENT_TYPES,
     VALID_STUDY_TYPES,
     AppointmentCreate,
     AppointmentResponse,
@@ -23,10 +24,18 @@ from app.services.storage_service import HybridStorageService
 
 router = APIRouter()
 
+DEFAULT_SPECIALTY_BY_TYPE = {
+    "MEDICO": "Ginecología y Obstetricia",
+    "LABORATORIO": "Análisis Clínicos / Laboratorio",
+    "ECO": "Ultrasonido Obstétrico",
+}
+
 
 def _appointment_to_response(item: MedicalAppointment) -> AppointmentResponse:
+    appt_type = getattr(item, "appointment_type", None) or "MEDICO"
     return AppointmentResponse(
         id=item.id,
+        appointmentType=appt_type,
         appointmentDate=item.appointment_date,
         doctorOrClinic=item.doctor_or_clinic,
         specialty=item.specialty,
@@ -73,18 +82,19 @@ def _study_to_response(study: MedicalStudy) -> MedicalStudyResponse:
 
 
 # ==============================================================================
-# CITAS MÉDICAS Y CONTROL PRENATAL
+# CITAS MÉDICAS, DE LABORATORIO Y DE ECO (AGENDA PRENATAL)
 # ==============================================================================
 
 
 @router.get("/appointments", response_model=List[AppointmentResponse])
 def list_appointments(
     status_filter: Optional[str] = Query(None, alias="status"),
+    type_filter: Optional[str] = Query(None, alias="type"),
     db: Session = Depends(get_db),
 ):
-    """Lista las citas médicas prenatales ordenadas por fecha descendente."""
+    """Lista las citas prenatales (Médico, Laboratorio o Eco) ordenadas por fecha descendente."""
     query = db.query(MedicalAppointment)
-    if status_filter:
+    if isinstance(status_filter, str) and status_filter:
         st = status_filter.upper()
         if st not in VALID_APPOINTMENT_STATUSES:
             raise HTTPException(
@@ -93,18 +103,34 @@ def list_appointments(
             )
         query = query.filter(MedicalAppointment.status == st)
 
+    if isinstance(type_filter, str) and type_filter:
+        tp = type_filter.upper()
+        if tp not in VALID_APPOINTMENT_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Tipo de cita inválido. Válidos: {sorted(VALID_APPOINTMENT_TYPES)}",
+            )
+        query = query.filter(MedicalAppointment.appointment_type == tp)
+
     items = query.order_by(MedicalAppointment.appointment_date.desc(), MedicalAppointment.id.desc()).all()
     return [_appointment_to_response(a) for a in items]
 
 
 @router.post("/appointments", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
 def create_appointment(payload: AppointmentCreate, db: Session = Depends(get_db)):
-    """Registra una cita prenatal calculando automáticamente la semana y día gestacional."""
+    """Registra una cita prenatal (MEDICO, LABORATORIO o ECO) sin requerir documentos."""
     st = payload.status.upper()
     if st not in VALID_APPOINTMENT_STATUSES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Estado inválido. Válidos: {sorted(VALID_APPOINTMENT_STATUSES)}",
+        )
+
+    appt_type = (payload.appointmentType or "MEDICO").upper()
+    if appt_type not in VALID_APPOINTMENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Tipo de cita inválido. Válidos: {sorted(VALID_APPOINTMENT_TYPES)}",
         )
 
     settings_rec = get_or_create_settings(db)
@@ -114,10 +140,13 @@ def create_appointment(payload: AppointmentCreate, db: Session = Depends(get_db)
         current_date=payload.appointmentDate.date(),
     )
 
+    specialty_val = (payload.specialty or "").strip() or DEFAULT_SPECIALTY_BY_TYPE.get(appt_type, "Ginecología y Obstetricia")
+
     appt = MedicalAppointment(
+        appointment_type=appt_type,
         appointment_date=payload.appointmentDate,
         doctor_or_clinic=payload.doctorOrClinic.strip(),
-        specialty=(payload.specialty or "Ginecología y Obstetricia").strip(),
+        specialty=specialty_val,
         gestational_week=metrics["weeks"],
         gestational_day=metrics["days"],
         mom_weight_kg=payload.momWeightKg,
@@ -139,10 +168,19 @@ def update_appointment(
     payload: AppointmentUpdate,
     db: Session = Depends(get_db),
 ):
-    """Actualiza signos vitales, preguntas, diagnóstico o estado de una cita médica."""
+    """Actualiza tipo, signos vitales, preguntas, diagnóstico o estado de una cita."""
     appt = db.query(MedicalAppointment).filter(MedicalAppointment.id == appointment_id).first()
     if not appt:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cita médica no encontrada")
+
+    if payload.appointmentType is not None:
+        tp = payload.appointmentType.upper()
+        if tp not in VALID_APPOINTMENT_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Tipo de cita inválido. Válidos: {sorted(VALID_APPOINTMENT_TYPES)}",
+            )
+        appt.appointment_type = tp
 
     if payload.appointmentDate is not None:
         appt.appointment_date = payload.appointmentDate
@@ -185,7 +223,7 @@ def update_appointment(
 
 @router.delete("/appointments/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_appointment(appointment_id: int, db: Session = Depends(get_db)):
-    """Elimina una cita médica."""
+    """Elimina una cita prenatal."""
     appt = db.query(MedicalAppointment).filter(MedicalAppointment.id == appointment_id).first()
     if not appt:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cita médica no encontrada")
@@ -195,7 +233,7 @@ def delete_appointment(appointment_id: int, db: Session = Depends(get_db)):
 
 
 # ==============================================================================
-# ESTUDIOS CLÍNICOS HÍBRIDOS (1:N FOTOS + PDFs) Y GALERÍA DE ULTRASONIDOS
+# ESTUDIOS DE LABORATORIO, DIAGNÓSTICOS/RECETAS Y ULTRASONIDOS (0:N ADJUNTOS)
 # ==============================================================================
 
 
@@ -205,7 +243,7 @@ def list_studies(
     appointment_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
 ):
-    """Lista los estudios clínicos y sus múltiples archivos adjuntos (fotos y PDFs)."""
+    """Lista los estudios clínicos, diagnósticos/recetas y ultrasonidos con sus adjuntos."""
     query = db.query(MedicalStudy).options(joinedload(MedicalStudy.attachments))
 
     if study_type:
@@ -232,12 +270,12 @@ async def create_study_with_attachments(
     summaryNotes: Optional[str] = Form(None),
     createdBy: str = Form("PAPA"),
     appointmentId: Optional[int] = Form(None),
-    files: List[UploadFile] = File(...),
+    files: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db),
 ):
     """
-    Crea un estudio médico o ultrasonido adjuntando 1 o múltiples archivos simultáneos
-    (soporta mezcla de PDFs de laboratorio e imágenes/fotos de recetas).
+    Crea un resultado de laboratorio, diagnóstico/receta médica o ultrasonido.
+    Permite guardarse CON o SIN documentos adjuntos (0:N archivos PDF o Imagen).
     """
     st_upper = studyType.upper()
     if st_upper not in VALID_STUDY_TYPES:
@@ -258,12 +296,7 @@ async def create_study_with_attachments(
         if not appt:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cita vinculada no encontrada")
 
-    valid_files = [f for f in files if f and f.filename]
-    if not valid_files:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Debe adjuntar al menos un archivo (imagen o PDF).",
-        )
+    valid_files = [f for f in (files or []) if f and getattr(f, "filename", "")]
 
     settings_rec = get_or_create_settings(db)
     metrics = ObstetricCalculatorService.calculate_metrics(
@@ -292,7 +325,6 @@ async def create_study_with_attachments(
                 )
             )
     except Exception:
-        # Limpiar archivos ya guardados si alguno falla en el lote
         for path in saved_paths:
             HybridStorageService.delete_file(path)
         raise
@@ -312,7 +344,6 @@ async def create_study_with_attachments(
     db.commit()
     db.refresh(study)
 
-    # Recargar con attachments ordenados
     created = (
         db.query(MedicalStudy)
         .options(joinedload(MedicalStudy.attachments))
@@ -328,7 +359,7 @@ async def add_attachments_to_study(
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
 ):
-    """Agrega más archivos (fotos o PDFs) a un estudio existente."""
+    """Agrega más archivos (fotos o PDFs) a un estudio, diagnóstico, receta o eco existente."""
     study = (
         db.query(MedicalStudy)
         .options(joinedload(MedicalStudy.attachments))
@@ -418,7 +449,7 @@ def get_consultation_mode(db: Session = Depends(get_db)):
     - Edad gestacional actual y perfil clínico de Mamá
     - Últimos signos vitales registrados
     - Lista de preguntas pendientes anotadas en citas
-    - Últimos estudios clínicos y ultrasonidos
+    - Últimos estudios clínicos, diagnósticos/recetas y ultrasonidos
     """
     settings_rec = get_or_create_settings(db)
     metrics = ObstetricCalculatorService.calculate_metrics(
@@ -426,7 +457,6 @@ def get_consultation_mode(db: Session = Depends(get_db)):
         calibration_offset_days=settings_rec.calibration_offset_days,
     )
 
-    # Últimos signos vitales registrados en citas (donde exista peso, presión o FCF)
     appointments = (
         db.query(MedicalAppointment)
         .order_by(MedicalAppointment.appointment_date.desc(), MedicalAppointment.id.desc())
@@ -445,13 +475,13 @@ def get_consultation_mode(db: Session = Depends(get_db)):
             )
             break
 
-    # Preguntas pendientes (de citas programadas o recientes con preguntas anotadas)
     pending_questions: List[PendingQuestionItem] = []
     for a in appointments:
         if a.status == "SCHEDULED" and a.questions_for_doctor and a.questions_for_doctor.strip():
             pending_questions.append(
                 PendingQuestionItem(
                     appointmentId=a.id,
+                    appointmentType=getattr(a, "appointment_type", None) or "MEDICO",
                     appointmentDate=a.appointment_date,
                     doctorOrClinic=a.doctor_or_clinic,
                     questions=a.questions_for_doctor.strip(),

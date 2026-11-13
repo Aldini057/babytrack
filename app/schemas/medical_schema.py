@@ -2,14 +2,16 @@ from datetime import datetime, date
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
-VALID_STUDY_TYPES = {"LABORATORIO", "ULTRASONIDO", "RECETA", "DOCUMENTO_CLINICO"}
+VALID_STUDY_TYPES = {"LABORATORIO", "ULTRASONIDO", "RECETA", "DIAGNOSTICO", "DOCUMENTO_CLINICO"}
+VALID_APPOINTMENT_TYPES = {"MEDICO", "LABORATORIO", "ECO"}
 VALID_APPOINTMENT_STATUSES = {"SCHEDULED", "COMPLETED", "CANCELLED"}
 
 
 class AppointmentCreate(BaseModel):
+    appointmentType: str = Field("MEDICO", description="MEDICO, LABORATORIO o ECO")
     appointmentDate: datetime
     doctorOrClinic: str = Field(..., min_length=1, max_length=120)
-    specialty: str = Field("Ginecología y Obstetricia", max_length=80)
+    specialty: Optional[str] = Field(None, max_length=80)
     momWeightKg: Optional[float] = Field(None, ge=25, le=250)
     bloodPressure: Optional[str] = Field(None, max_length=20)
     babyHeartRateBpm: Optional[int] = Field(None, ge=60, le=240)
@@ -19,6 +21,7 @@ class AppointmentCreate(BaseModel):
 
 
 class AppointmentUpdate(BaseModel):
+    appointmentType: Optional[str] = None
     appointmentDate: Optional[datetime] = None
     doctorOrClinic: Optional[str] = Field(None, min_length=1, max_length=120)
     specialty: Optional[str] = Field(None, max_length=80)
@@ -32,6 +35,7 @@ class AppointmentUpdate(BaseModel):
 
 class AppointmentResponse(BaseModel):
     id: int
+    appointmentType: str
     appointmentDate: datetime
     doctorOrClinic: str
     specialty: Optional[str]
@@ -82,6 +86,7 @@ class LatestVitalsSummary(BaseModel):
 
 class PendingQuestionItem(BaseModel):
     appointmentId: int
+    appointmentType: str = "MEDICO"
     appointmentDate: datetime
     doctorOrClinic: str
     questions: str

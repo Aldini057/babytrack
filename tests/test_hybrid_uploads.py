@@ -151,3 +151,176 @@ def test_reject_invalid_file_type_and_fake_pdf(client):
         files=[("files", ("fake.pdf", io.BytesIO(b"NOT_A_PDF"), "application/pdf"))],
     )
     assert res_fake_pdf.status_code == 400
+
+
+def test_appointments_by_type_medico_laboratorio_eco(client):
+    """
+    Verifica que se puedan agendar citas de tipo MEDICO, LABORATORIO y ECO
+    sin requerir documentos y filtrarlas por tipo.
+    """
+    res_med = client.post(
+        "/api/v1/medical/appointments",
+        json={
+            "appointmentType": "MEDICO",
+            "appointmentDate": "2026-12-01T10:00:00",
+            "doctorOrClinic": "Dra. García · Control Mensual",
+            "questionsForDoctor": "¿Puedo tomar magnesio?",
+        },
+    )
+    assert res_med.status_code == 201
+    assert res_med.json()["appointmentType"] == "MEDICO"
+    assert res_med.json()["specialty"] == "Ginecología y Obstetricia"
+
+    res_lab = client.post(
+        "/api/v1/medical/appointments",
+        json={
+            "appointmentType": "LABORATORIO",
+            "appointmentDate": "2026-12-05T07:30:00",
+            "doctorOrClinic": "Laboratorio Chopo · Curva de Tolerancia",
+            "questionsForDoctor": "Ayuno de 8 horas",
+        },
+    )
+    assert res_lab.status_code == 201
+    assert res_lab.json()["appointmentType"] == "LABORATORIO"
+    assert res_lab.json()["specialty"] == "Análisis Clínicos / Laboratorio"
+
+    res_eco = client.post(
+        "/api/v1/medical/appointments",
+        json={
+            "appointmentType": "ECO",
+            "appointmentDate": "2026-12-10T16:00:00",
+            "doctorOrClinic": "Dr. Morales · Eco Genético",
+        },
+    )
+    assert res_eco.status_code == 201
+    assert res_eco.json()["appointmentType"] == "ECO"
+    assert res_eco.json()["specialty"] == "Ultrasonido Obstétrico"
+
+    # Filtrar solo citas de LABORATORIO
+    list_lab = client.get("/api/v1/medical/appointments?type=LABORATORIO")
+    assert list_lab.status_code == 200
+    assert len(list_lab.json()) == 1
+    assert list_lab.json()[0]["appointmentType"] == "LABORATORIO"
+
+    # Filtrar solo citas de ECO
+    list_eco = client.get("/api/v1/medical/appointments?type=ECO")
+    assert list_eco.status_code == 200
+    assert len(list_eco.json()) == 1
+    assert list_eco.json()[0]["appointmentType"] == "ECO"
+
+
+def test_studies_without_documents_for_lab_and_medical_visits(client):
+    """
+    Verifica que en Laboratorio (LABORATORIO) y en Resultados de Visitas Médicas
+    (DIAGNOSTICO y RECETA) se pueda guardar sin adjuntar ningún documento (0 archivos),
+    y opcionalmente adjuntar archivos después.
+    """
+    # 1. Guardar resultado de Laboratorio sin documento
+    res_lab = client.post(
+        "/api/v1/medical/studies",
+        data={
+            "studyType": "LABORATORIO",
+            "title": "Glucosa en ayuno y EGO",
+            "studyDate": "2026-11-15",
+            "summaryNotes": "Glucosa: 82 mg/dL, EGO negativo a infección.",
+            "createdBy": "MAMA",
+        },
+    )
+    assert res_lab.status_code == 201
+    lab_data = res_lab.json()
+    assert lab_data["studyType"] == "LABORATORIO"
+    assert lab_data["attachments"] == []
+    assert "Glucosa: 82 mg/dL" in lab_data["summaryNotes"]
+
+    # 2. Guardar Diagnóstico de Visita Médica sin documento
+    res_diag = client.post(
+        "/api/v1/medical/studies",
+        data={
+            "studyType": "DIAGNOSTICO",
+            "title": "Consulta 1er Trimestre - Evolución Normal",
+            "studyDate": "2026-11-16",
+            "summaryNotes": "Embarazo normoevolutivo, continuar ácido fólico y buena hidratación.",
+            "createdBy": "PAPA",
+        },
+    )
+    assert res_diag.status_code == 201
+    diag_data = res_diag.json()
+    assert diag_data["studyType"] == "DIAGNOSTICO"
+    assert diag_data["attachments"] == []
+
+    # 3. Guardar Receta Médica sin documento y luego adjuntarle foto de la receta
+    res_rec = client.post(
+        "/api/v1/medical/studies",
+        data={
+            "studyType": "RECETA",
+            "title": "Receta Vitaminas Prenatales Regenesis Max",
+            "studyDate": "2026-11-16",
+            "summaryNotes": "1 cápsula diaria por las mañanas.",
+            "createdBy": "MAMA",
+        },
+    )
+    assert res_rec.status_code == 201
+    rec_data = res_rec.json()
+    assert rec_data["studyType"] == "RECETA"
+    assert rec_data["attachments"] == []
+
+    # Adjuntar foto posteriormente al registro que se creó sin documento
+    rec_img = _make_png_bytes(width=600, height=800, color="white")
+    res_attach = client.post(
+        f"/api/v1/medical/studies/{rec_data['id']}/attachments",
+        files=[("files", ("foto_receta.png", rec_img, "image/png"))],
+    )
+    assert res_attach.status_code == 201
+    assert len(res_attach.json()["attachments"]) == 1
+
+
+def test_non_destructive_schema_migration_preserves_existing_rows(tmp_path):
+    """
+    Simula una base de datos SQLite existente en producción (antes de la columna appointment_type)
+    con citas ya guardadas, y verifica que ensure_schema_migrations agregue la columna
+    sin perder ningún registro previo.
+    """
+    from sqlalchemy import create_engine, text
+    from app.database import ensure_schema_migrations
+
+    legacy_db_path = tmp_path / "legacy_babytrack.db"
+    legacy_engine = create_engine(f"sqlite:///{legacy_db_path}")
+
+    with legacy_engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                CREATE TABLE medical_appointments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    appointment_date DATETIME NOT NULL,
+                    gestational_week INTEGER NOT NULL,
+                    gestational_day INTEGER NOT NULL,
+                    doctor_or_clinic VARCHAR(160) NOT NULL,
+                    specialty VARCHAR(100) NOT NULL,
+                    status VARCHAR(30) NOT NULL
+                )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                INSERT INTO medical_appointments
+                (appointment_date, gestational_week, gestational_day, doctor_or_clinic, specialty, status)
+                VALUES ('2026-11-20 10:00:00', 7, 3, 'Dra. Existente', 'Obstetricia', 'SCHEDULED')
+                """
+            )
+        )
+
+    # Ejecutar migración aditiva segura
+    ensure_schema_migrations(legacy_engine)
+
+    with legacy_engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT doctor_or_clinic, appointment_type FROM medical_appointments WHERE id = 1")
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "Dra. Existente"
+        assert row[1] == "MEDICO"
+
+

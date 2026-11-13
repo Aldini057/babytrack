@@ -38,6 +38,7 @@ class HybridStorageService:
             "DOCUMENTO_CLINICO": "documentos",
             "LABORATORIO": "estudios",
             "RECETA": "estudios",
+            "DIAGNOSTICO": "estudios",
         }
         return mapping.get((study_type or "").upper(), "estudios")
 

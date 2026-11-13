@@ -7,7 +7,7 @@
   <div class="bg-white rounded-3xl p-5 border border-theme shadow-theme space-y-3">
     <div class="flex items-center justify-between gap-2">
       <div>
-        <p class="text-[11px] uppercase tracking-wider font-bold text-theme-muted">Control Prenatal & Historial</p>
+        <p class="text-[11px] uppercase tracking-wider font-bold text-theme-muted">Control Prenatal · Citas, Consultas y Laboratorio</p>
         <h2 class="text-lg font-extrabold text-gray-900">Médico, Estudios y Ecos</h2>
       </div>
       <button 
@@ -19,93 +19,222 @@
       </button>
     </div>
 
-    <!-- Estadísticas Rápidas -->
-    <div class="grid grid-cols-3 gap-2 pt-1">
-      <div class="bg-blue-50/70 border border-blue-100 rounded-2xl p-2.5 text-center">
-        <p class="text-lg font-black text-blue-700" x-text="nonUltraStudies.length"></p>
-        <p class="text-[10px] font-bold text-blue-900/70 uppercase">Estudios</p>
-      </div>
-      <div class="bg-purple-50/70 border border-purple-100 rounded-2xl p-2.5 text-center">
-        <p class="text-lg font-black text-purple-700" x-text="ultrasounds.length"></p>
-        <p class="text-[10px] font-bold text-purple-900/70 uppercase">Ecos</p>
-      </div>
-      <div class="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-2.5 text-center">
-        <p class="text-lg font-black text-emerald-700" x-text="appointments.length"></p>
-        <p class="text-[10px] font-bold text-emerald-900/70 uppercase">Citas</p>
-      </div>
+    <!-- Estadísticas Rápidas (4 Apartados) -->
+    <div class="grid grid-cols-4 gap-1.5 pt-1">
+      <button type="button" @click="activeSubTab = 'citas'" class="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-2 text-center hover:bg-emerald-100/60 transition">
+        <p class="text-base font-black text-emerald-700" x-text="appointments.length"></p>
+        <p class="text-[9px] font-bold text-emerald-900/70 uppercase truncate">Citas</p>
+      </button>
+      <button type="button" @click="activeSubTab = 'consultas'" class="bg-amber-50/70 border border-amber-100 rounded-2xl p-2 text-center hover:bg-amber-100/60 transition">
+        <p class="text-base font-black text-amber-700" x-text="medicalVisitResults.length"></p>
+        <p class="text-[9px] font-bold text-amber-900/70 uppercase truncate">Consultas</p>
+      </button>
+      <button type="button" @click="activeSubTab = 'laboratorio'" class="bg-blue-50/70 border border-blue-100 rounded-2xl p-2 text-center hover:bg-blue-100/60 transition">
+        <p class="text-base font-black text-blue-700" x-text="labResults.length"></p>
+        <p class="text-[9px] font-bold text-blue-900/70 uppercase truncate">Laboratorio</p>
+      </button>
+      <button type="button" @click="activeSubTab = 'ecos'" class="bg-purple-50/70 border border-purple-100 rounded-2xl p-2 text-center hover:bg-purple-100/60 transition">
+        <p class="text-base font-black text-purple-700" x-text="ultrasounds.length"></p>
+        <p class="text-[9px] font-bold text-purple-900/70 uppercase truncate">Ecos</p>
+      </button>
     </div>
 
-    <!-- Pestañas Internas del Módulo -->
-    <div class="grid grid-cols-3 gap-1.5 bg-gray-100 p-1 rounded-2xl">
+    <!-- Pestañas Internas del Módulo (4 Apartados Claros) -->
+    <div class="grid grid-cols-4 gap-1 bg-gray-100 p-1 rounded-2xl">
       <button 
         type="button"
-        @click="activeSubTab = 'estudios'"
-        :class="activeSubTab === 'estudios' ? 'bg-white text-theme-primary shadow-2xs' : 'text-gray-600'"
-        class="py-2 rounded-xl text-xs font-bold transition">
-        🧪 Estudios
+        @click="activeSubTab = 'citas'"
+        :class="activeSubTab === 'citas' ? 'bg-white text-theme-primary shadow-2xs' : 'text-gray-600'"
+        class="py-2 px-1 rounded-xl text-[11px] font-bold transition truncate">
+        📅 Citas
+      </button>
+      <button 
+        type="button"
+        @click="activeSubTab = 'consultas'"
+        :class="activeSubTab === 'consultas' ? 'bg-white text-theme-primary shadow-2xs' : 'text-gray-600'"
+        class="py-2 px-1 rounded-xl text-[11px] font-bold transition truncate">
+        🩺 Consultas
+      </button>
+      <button 
+        type="button"
+        @click="activeSubTab = 'laboratorio'"
+        :class="activeSubTab === 'laboratorio' ? 'bg-white text-theme-primary shadow-2xs' : 'text-gray-600'"
+        class="py-2 px-1 rounded-xl text-[11px] font-bold transition truncate">
+        🔬 Lab
       </button>
       <button 
         type="button"
         @click="activeSubTab = 'ecos'"
         :class="activeSubTab === 'ecos' ? 'bg-white text-theme-primary shadow-2xs' : 'text-gray-600'"
-        class="py-2 rounded-xl text-xs font-bold transition">
-        🖼️ Ecos
-      </button>
-      <button 
-        type="button"
-        @click="activeSubTab = 'citas'"
-        :class="activeSubTab === 'citas' ? 'bg-white text-theme-primary shadow-2xs' : 'text-gray-600'"
-        class="py-2 rounded-xl text-xs font-bold transition">
-        📅 Citas
+        class="py-2 px-1 rounded-xl text-[11px] font-bold transition truncate">
+        👶 Ecos
       </button>
     </div>
   </div>
 
   <!-- ====================================================================== -->
-  <!-- TAB 1: ESTUDIOS CLÍNICOS, RECETAS Y DOCUMENTOS (SOPORTE HÍBRIDO 1:N)   -->
+  <!-- TAB 1: CITAS (AGENDA DE MÉDICO, LABORATORIO Y ECO)                     -->
   <!-- ====================================================================== -->
-  <section x-show="activeSubTab === 'estudios'" class="space-y-3">
+  <section x-show="activeSubTab === 'citas'" class="space-y-3">
     <div class="flex items-center justify-between gap-2">
-      <!-- Filtros -->
+      <!-- Filtros por Tipo de Cita -->
       <div class="flex items-center space-x-1.5 overflow-x-auto pb-1">
-        <button @click="studyFilter = 'ALL'" :class="studyFilter === 'ALL' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">Todos</button>
-        <button @click="studyFilter = 'LABORATORIO'" :class="studyFilter === 'LABORATORIO' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">🔬 Lab</button>
-        <button @click="studyFilter = 'RECETA'" :class="studyFilter === 'RECETA' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">💊 Receta</button>
-        <button @click="studyFilter = 'DOCUMENTO_CLINICO'" :class="studyFilter === 'DOCUMENTO_CLINICO' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">📁 Docs</button>
+        <button @click="apptFilter = 'ALL'" :class="apptFilter === 'ALL' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">Todas</button>
+        <button @click="apptFilter = 'MEDICO'" :class="apptFilter === 'MEDICO' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">🩺 Médico</button>
+        <button @click="apptFilter = 'LABORATORIO'" :class="apptFilter === 'LABORATORIO' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">🔬 Laboratorio</button>
+        <button @click="apptFilter = 'ECO'" :class="apptFilter === 'ECO' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">👶 Eco</button>
       </div>
-      <button @click="openStudyModal('LABORATORIO')" class="px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow flex-shrink-0">
-        + Subir
+      <button @click="openAppointmentModal(apptFilter === 'ALL' ? 'MEDICO' : apptFilter)" class="px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow flex-shrink-0">
+        + Agendar Cita
       </button>
     </div>
 
-    <!-- Lista de Estudios -->
     <div class="space-y-3">
-      <template x-for="st in filteredNonUltraStudies" :key="st.id">
+      <template x-for="appt in filteredAppointments" :key="appt.id">
+        <div class="bg-white rounded-2xl p-4 border border-theme shadow-sm space-y-2.5">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                <span 
+                  :class="appointmentTypeBadgeClass(appt.appointmentType)"
+                  class="px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                  x-text="appointmentTypeLabel(appt.appointmentType)"></span>
+                <span 
+                  :class="appt.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : (appt.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800')"
+                  class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                  x-text="appt.status === 'COMPLETED' ? '✓ Realizada' : (appt.status === 'CANCELLED' ? 'Cancelada' : '🕒 Programada')"></span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-primary-light text-theme-primary" x-text="'Sem ' + appt.gestationalWeek + ', Día ' + appt.gestationalDay"></span>
+              </div>
+              <h4 class="text-sm font-extrabold text-gray-900" x-text="appt.doctorOrClinic"></h4>
+              <p class="text-xs text-gray-500" x-text="formatDateTime(appt.appointmentDate) + ' · ' + (appt.specialty || defaultSpecialtyForType(appt.appointmentType))"></p>
+            </div>
+            <div class="flex space-x-1">
+              <button @click="openEditAppointment(appt)" class="text-xs text-gray-400 hover:text-gray-700 p-1" title="Editar cita">✏️</button>
+              <button @click="deleteAppointment(appt.id)" class="text-xs text-gray-300 hover:text-red-500 p-1" title="Eliminar">🗑️</button>
+            </div>
+          </div>
+
+          <!-- Signos Vitales -->
+          <div class="grid grid-cols-3 gap-2" x-show="appt.momWeightKg || appt.bloodPressure || appt.babyHeartRateBpm">
+            <div class="bg-blue-50/60 rounded-xl p-2 text-center border border-blue-100">
+              <p class="text-[10px] text-blue-700 font-bold">Peso</p>
+              <p class="text-xs font-black text-gray-900" x-text="appt.momWeightKg ? appt.momWeightKg + ' kg' : '—'"></p>
+            </div>
+            <div class="bg-rose-50/60 rounded-xl p-2 text-center border border-rose-100">
+              <p class="text-[10px] text-rose-700 font-bold">Presión</p>
+              <p class="text-xs font-black text-gray-900" x-text="appt.bloodPressure || '—'"></p>
+            </div>
+            <div class="bg-emerald-50/60 rounded-xl p-2 text-center border border-emerald-100">
+              <p class="text-[10px] text-emerald-700 font-bold">FCF Bebé</p>
+              <p class="text-xs font-black text-gray-900" x-text="appt.babyHeartRateBpm ? appt.babyHeartRateBpm + ' lpm' : '—'"></p>
+            </div>
+          </div>
+
+          <div x-show="appt.questionsForDoctor" class="bg-amber-50/60 border border-amber-200 rounded-xl p-2.5 text-xs">
+            <p class="font-bold text-amber-900 text-[11px] mb-0.5" x-text="appt.appointmentType === 'LABORATORIO' ? '📋 Estudios a realizar / Indicaciones previas (ayuno, etc.):' : '❓ Dudas o notas previas para la cita:'"></p>
+            <p class="text-gray-700 whitespace-pre-line" x-text="appt.questionsForDoctor"></p>
+          </div>
+
+          <div x-show="appt.doctorNotesAndDiagnosis" class="bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs">
+            <p class="font-bold text-gray-800 text-[11px] mb-0.5">📝 Resumen / Diagnóstico / Indicaciones:</p>
+            <p class="text-gray-700 whitespace-pre-line" x-text="appt.doctorNotesAndDiagnosis"></p>
+          </div>
+
+          <!-- Acción Rápida para guardar el resultado de esta cita -->
+          <div class="pt-1 flex items-center justify-end border-t border-gray-100">
+            <template x-if="(appt.appointmentType || 'MEDICO') === 'MEDICO'">
+              <button type="button" @click="openResultFromAppointment(appt, 'DIAGNOSTICO')" class="text-[11px] font-bold text-theme-primary hover:underline flex items-center space-x-1">
+                <span>🩺</span>
+                <span>+ Guardar Diagnóstico o Receta de esta visita</span>
+              </button>
+            </template>
+            <template x-if="appt.appointmentType === 'LABORATORIO'">
+              <button type="button" @click="openResultFromAppointment(appt, 'LABORATORIO')" class="text-[11px] font-bold text-blue-700 hover:underline flex items-center space-x-1">
+                <span>🔬</span>
+                <span>+ Guardar Resultados de este Laboratorio</span>
+              </button>
+            </template>
+            <template x-if="appt.appointmentType === 'ECO'">
+              <button type="button" @click="openResultFromAppointment(appt, 'ULTRASONIDO')" class="text-[11px] font-bold text-purple-700 hover:underline flex items-center space-x-1">
+                <span>👶</span>
+                <span>+ Guardar Ultrasonido de esta cita</span>
+              </button>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <div x-show="filteredAppointments.length === 0" class="text-center py-10 bg-white rounded-2xl border border-theme space-y-2">
+        <p class="text-2xl">📅</p>
+        <p class="text-xs text-gray-500 font-medium">No hay citas registradas en esta categoría.</p>
+        <div class="flex flex-wrap justify-center gap-2 pt-1">
+          <button @click="openAppointmentModal('MEDICO')" class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">+ Cita Médico</button>
+          <button @click="openAppointmentModal('LABORATORIO')" class="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold">+ Cita Laboratorio</button>
+          <button @click="openAppointmentModal('ECO')" class="px-3 py-1.5 rounded-xl bg-purple-50 text-purple-800 border border-purple-200 text-xs font-bold">+ Cita Eco</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================== -->
+  <!-- TAB 2: CONSULTAS MÉDICAS (DIAGNÓSTICOS, INDICACIONES Y RECETAS)        -->
+  <!-- ====================================================================== -->
+  <section x-show="activeSubTab === 'consultas'" x-cloak class="space-y-3">
+    <div class="bg-amber-50/70 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-2">
+      <div>
+        <p class="text-xs font-extrabold text-amber-900">🩺 Resultados de Visitas Médicas</p>
+        <p class="text-[11px] text-amber-800/80">Guarda diagnósticos, indicaciones del ginecólogo y recetas médicas (con o sin documento adjunto).</p>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-1.5 flex-shrink-0">
+        <button @click="openStudyModal('DIAGNOSTICO')" class="px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow whitespace-nowrap">
+          + Diagnóstico / Receta
+        </button>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center space-x-1.5 overflow-x-auto pb-1">
+        <button @click="visitFilter = 'ALL'" :class="visitFilter === 'ALL' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">Todos</button>
+        <button @click="visitFilter = 'DIAGNOSTICO'" :class="visitFilter === 'DIAGNOSTICO' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">🩺 Diagnósticos</button>
+        <button @click="visitFilter = 'RECETA'" :class="visitFilter === 'RECETA' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">💊 Recetas</button>
+        <button @click="visitFilter = 'DOCUMENTO_CLINICO'" :class="visitFilter === 'DOCUMENTO_CLINICO' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">📁 Docs Clínicos</button>
+      </div>
+    </div>
+
+    <!-- Lista de Diagnósticos y Recetas -->
+    <div class="space-y-3">
+      <template x-for="st in filteredMedicalVisitResults" :key="st.id">
         <div class="bg-white rounded-2xl p-4 border border-theme shadow-sm space-y-2.5">
           <div class="flex items-start justify-between gap-2">
             <div>
               <div class="flex items-center space-x-1.5 mb-1">
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200" x-text="studyTypeLabel(st.studyType)"></span>
+                <span 
+                  :class="st.studyType === 'DIAGNOSTICO' ? 'bg-amber-50 text-amber-800 border-amber-200' : (st.studyType === 'RECETA' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-gray-100 text-gray-700 border-gray-200')"
+                  class="px-2 py-0.5 rounded-full text-[10px] font-bold border" 
+                  x-text="studyTypeLabel(st.studyType)"></span>
                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-primary-light text-theme-primary" x-text="'Sem ' + st.gestationalWeek + ', Día ' + st.gestationalDay"></span>
               </div>
               <h4 class="text-sm font-extrabold text-gray-900" x-text="st.title"></h4>
-              <p class="text-[11px] text-gray-400 font-medium" x-text="st.studyDate + ' · Subido por ' + (st.createdBy === 'MAMA' ? 'Mamá' : 'Papá')"></p>
+              <p class="text-[11px] text-gray-400 font-medium" x-text="st.studyDate + ' · Guardado por ' + (st.createdBy === 'MAMA' ? 'Mamá' : 'Papá')"></p>
             </div>
             <button @click="deleteStudy(st.id)" class="text-xs text-gray-300 hover:text-red-500 p-1" title="Eliminar">🗑️</button>
           </div>
 
-          <p x-show="st.summaryNotes" class="text-xs text-gray-600 bg-gray-50 rounded-xl p-2.5" x-text="st.summaryNotes"></p>
+          <div x-show="st.summaryNotes" class="text-xs text-gray-700 bg-amber-50/40 border border-amber-100 rounded-xl p-3 whitespace-pre-line" x-text="st.summaryNotes"></div>
 
-          <!-- Adjuntos Híbridos (PDFs + Imágenes 1:N) -->
+          <!-- Adjuntos Híbridos (0:N — puede no tener documentos o tener varios) -->
           <div class="space-y-1.5 pt-1">
             <div class="flex items-center justify-between">
-              <p class="text-[10px] uppercase font-bold text-gray-400">Archivos Adjuntos (<span x-text="st.attachments.length"></span>)</p>
+              <p class="text-[10px] uppercase font-bold text-gray-400">
+                <span x-show="st.attachments.length > 0">Documentos / Fotos Adjuntas (<span x-text="st.attachments.length"></span>)</span>
+                <span x-show="st.attachments.length === 0">Sin documentos adjuntos (solo nota médica)</span>
+              </p>
               <label class="text-[11px] font-bold text-theme-primary cursor-pointer hover:underline">
-                + Añadir más fotos/PDF
+                + Adjuntar foto/PDF
                 <input type="file" accept="image/*,application/pdf" multiple class="hidden" @change="appendAttachments(st.id, $event)">
               </label>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" x-show="st.attachments.length > 0">
               <template x-for="att in st.attachments" :key="att.id">
                 <button 
                   type="button"
@@ -130,23 +259,138 @@
         </div>
       </template>
 
-      <div x-show="filteredNonUltraStudies.length === 0" class="text-center py-10 bg-white rounded-2xl border border-theme space-y-2">
-        <p class="text-2xl">🧪</p>
-        <p class="text-xs text-gray-500 font-medium">Aún no hay estudios clínicos o recetas guardados.</p>
-        <button @click="openStudyModal('LABORATORIO')" class="text-xs font-bold text-theme-primary underline">Subir el primer estudio o receta</button>
+      <div x-show="filteredMedicalVisitResults.length === 0" class="text-center py-10 bg-white rounded-2xl border border-theme space-y-2">
+        <p class="text-2xl">🩺</p>
+        <p class="text-xs text-gray-500 font-medium">Aún no hay diagnósticos ni recetas guardados en este apartado.</p>
+        <div class="flex justify-center gap-2 pt-1">
+          <button @click="openStudyModal('DIAGNOSTICO')" class="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 text-xs font-bold">+ Guardar Diagnóstico</button>
+          <button @click="openStudyModal('RECETA')" class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200 text-xs font-bold">+ Guardar Receta</button>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- ====================================================================== -->
-  <!-- TAB 2: GALERÍA DE ULTRASONIDOS (ECOS)                                  -->
+  <!-- TAB 3: LABORATORIO (RESULTADOS DE LAB + CITAS DE LAB PROGRAMADAS)      -->
+  <!-- ====================================================================== -->
+  <section x-show="activeSubTab === 'laboratorio'" x-cloak class="space-y-3">
+    <div class="bg-blue-50/70 border border-blue-200 rounded-2xl p-3 flex items-center justify-between gap-2">
+      <div>
+        <p class="text-xs font-extrabold text-blue-900">🔬 Estudios y Resultados de Laboratorio</p>
+        <p class="text-[11px] text-blue-800/80">Guarda tus resultados (con o sin PDF/foto) o agenda un próximo estudio si la fecha es futura.</p>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-1.5 flex-shrink-0">
+        <button @click="openAppointmentModal('LABORATORIO')" class="px-2.5 py-1.5 rounded-xl bg-white text-blue-700 border border-blue-200 text-[11px] font-bold whitespace-nowrap">
+          📅 Agendar Cita Lab
+        </button>
+        <button @click="openStudyModal('LABORATORIO')" class="px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow whitespace-nowrap">
+          + Guardar Resultado
+        </button>
+      </div>
+    </div>
+
+    <!-- Citas de Laboratorio Programadas (si existen) -->
+    <div x-show="scheduledLabAppointments.length > 0" class="bg-white rounded-2xl p-3.5 border border-blue-200 space-y-2">
+      <p class="text-[11px] font-extrabold uppercase tracking-wider text-blue-800">🕒 Próximas Citas de Laboratorio Agendadas</p>
+      <div class="space-y-2">
+        <template x-for="la in scheduledLabAppointments" :key="la.id">
+          <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
+            <div class="min-w-0">
+              <p class="text-xs font-bold text-gray-900 truncate" x-text="la.doctorOrClinic"></p>
+              <p class="text-[11px] text-gray-600" x-text="formatDateTime(la.appointmentDate) + ' · Sem ' + la.gestationalWeek"></p>
+              <p x-show="la.questionsForDoctor" class="text-[11px] text-blue-800 mt-0.5" x-text="la.questionsForDoctor"></p>
+            </div>
+            <button 
+              type="button"
+              @click="openResultFromAppointment(la, 'LABORATORIO')"
+              class="px-2.5 py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold flex-shrink-0">
+              + Subir Resultado
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Lista de Resultados de Laboratorio -->
+    <div class="space-y-3">
+      <template x-for="st in labResults" :key="st.id">
+        <div class="bg-white rounded-2xl p-4 border border-theme shadow-sm space-y-2.5">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center space-x-1.5 mb-1">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">🔬 Resultado de Laboratorio</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-primary-light text-theme-primary" x-text="'Sem ' + st.gestationalWeek + ', Día ' + st.gestationalDay"></span>
+              </div>
+              <h4 class="text-sm font-extrabold text-gray-900" x-text="st.title"></h4>
+              <p class="text-[11px] text-gray-400 font-medium" x-text="st.studyDate + ' · Guardado por ' + (st.createdBy === 'MAMA' ? 'Mamá' : 'Papá')"></p>
+            </div>
+            <button @click="deleteStudy(st.id)" class="text-xs text-gray-300 hover:text-red-500 p-1" title="Eliminar">🗑️</button>
+          </div>
+
+          <div x-show="st.summaryNotes" class="text-xs text-gray-700 bg-blue-50/40 border border-blue-100 rounded-xl p-3 whitespace-pre-line" x-text="st.summaryNotes"></div>
+
+          <!-- Adjuntos Híbridos (0:N) -->
+          <div class="space-y-1.5 pt-1">
+            <div class="flex items-center justify-between">
+              <p class="text-[10px] uppercase font-bold text-gray-400">
+                <span x-show="st.attachments.length > 0">Archivos Adjuntos (<span x-text="st.attachments.length"></span>)</span>
+                <span x-show="st.attachments.length === 0">Guardado sin documento adjunto</span>
+              </p>
+              <label class="text-[11px] font-bold text-theme-primary cursor-pointer hover:underline">
+                + Adjuntar PDF o fotos
+                <input type="file" accept="image/*,application/pdf" multiple class="hidden" @change="appendAttachments(st.id, $event)">
+              </label>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" x-show="st.attachments.length > 0">
+              <template x-for="att in st.attachments" :key="att.id">
+                <button 
+                  type="button"
+                  @click="BabyTrack.openFileViewer(att, st.title, st.attachments)"
+                  class="flex items-center space-x-2.5 p-2 rounded-xl border border-gray-200 bg-gray-50/70 hover:bg-theme-primary-light/50 hover:border-theme-primary transition text-left">
+                  <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden bg-white border border-gray-200">
+                    <template x-if="att.fileCategory === 'IMAGE'">
+                      <img :src="att.url" class="w-full h-full object-cover" alt="Miniatura">
+                    </template>
+                    <template x-if="att.fileCategory === 'PDF'">
+                      <span class="text-lg">📄</span>
+                    </template>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-xs font-bold text-gray-800 truncate" x-text="att.originalFilename"></p>
+                    <p class="text-[10px] text-gray-500" x-text="att.fileCategory + ' · ' + formatBytes(att.fileSizeBytes)"></p>
+                  </div>
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <div x-show="labResults.length === 0" class="text-center py-10 bg-white rounded-2xl border border-theme space-y-2">
+        <p class="text-2xl">🔬</p>
+        <p class="text-xs text-gray-500 font-medium">Aún no hay resultados de laboratorio guardados.</p>
+        <div class="flex justify-center gap-2 pt-1">
+          <button @click="openStudyModal('LABORATORIO')" class="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold">+ Guardar Resultado Lab</button>
+          <button @click="openAppointmentModal('LABORATORIO')" class="px-3 py-1.5 rounded-xl bg-white text-gray-700 border border-gray-200 text-xs font-bold">📅 Agendar Cita Lab</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================== -->
+  <!-- TAB 4: GALERÍA DE ULTRASONIDOS (ECOS)                                  -->
   <!-- ====================================================================== -->
   <section x-show="activeSubTab === 'ecos'" x-cloak class="space-y-3">
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between gap-2">
       <p class="text-xs font-bold text-theme-muted uppercase tracking-wider">Línea de Tiempo de Ecos</p>
-      <button @click="openStudyModal('ULTRASONIDO')" class="px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow">
-        + Nuevo Eco
-      </button>
+      <div class="flex items-center gap-1.5">
+        <button @click="openAppointmentModal('ECO')" class="px-2.5 py-1.5 rounded-xl bg-purple-50 text-purple-800 border border-purple-200 text-[11px] font-bold">
+          📅 Agendar Eco
+        </button>
+        <button @click="openStudyModal('ULTRASONIDO')" class="px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow">
+          + Nuevo Eco
+        </button>
+      </div>
     </div>
 
     <div class="space-y-4">
@@ -163,7 +407,7 @@
             <button @click="deleteStudy(eco.id)" class="text-xs text-gray-300 hover:text-red-500 p-1">🗑️</button>
           </div>
 
-          <p x-show="eco.summaryNotes" class="text-xs text-gray-700 bg-purple-50/40 rounded-xl p-2.5 border border-purple-100" x-text="eco.summaryNotes"></p>
+          <p x-show="eco.summaryNotes" class="text-xs text-gray-700 bg-purple-50/40 rounded-xl p-2.5 border border-purple-100 whitespace-pre-line" x-text="eco.summaryNotes"></p>
 
           <!-- Fotos del Ultrasonido en Grid -->
           <div class="grid grid-cols-2 gap-2" x-show="eco.attachments.some(a => a.fileCategory === 'IMAGE')">
@@ -193,6 +437,14 @@
               </button>
             </template>
           </div>
+
+          <div class="flex items-center justify-between pt-1">
+            <span class="text-[10px] text-gray-400 font-bold" x-show="eco.attachments.length === 0">Sin fotos adjuntas aún</span>
+            <label class="text-[11px] font-bold text-theme-primary cursor-pointer hover:underline ml-auto">
+              + Añadir foto o PDF al Eco
+              <input type="file" accept="image/*,application/pdf" multiple class="hidden" @change="appendAttachments(eco.id, $event)">
+            </label>
+          </div>
         </div>
       </template>
 
@@ -205,134 +457,96 @@
   </section>
 
   <!-- ====================================================================== -->
-  <!-- TAB 3: CITAS MÉDICAS PRENATALES                                        -->
-  <!-- ====================================================================== -->
-  <section x-show="activeSubTab === 'citas'" x-cloak class="space-y-3">
-    <div class="flex items-center justify-between">
-      <p class="text-xs font-bold text-theme-muted uppercase tracking-wider">Agenda y Control de Signos</p>
-      <button @click="openAppointmentModal()" class="px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow">
-        + Nueva Cita
-      </button>
-    </div>
-
-    <div class="space-y-3">
-      <template x-for="appt in appointments" :key="appt.id">
-        <div class="bg-white rounded-2xl p-4 border border-theme shadow-sm space-y-2.5">
-          <div class="flex items-start justify-between gap-2">
-            <div>
-              <div class="flex items-center space-x-1.5 mb-1">
-                <span 
-                  :class="appt.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : (appt.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800')"
-                  class="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                  x-text="appt.status === 'COMPLETED' ? '✓ Realizada' : (appt.status === 'CANCELLED' ? 'Cancelada' : '🕒 Programada')"></span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-primary-light text-theme-primary" x-text="'Sem ' + appt.gestationalWeek + ', Día ' + appt.gestationalDay"></span>
-              </div>
-              <h4 class="text-sm font-extrabold text-gray-900" x-text="appt.doctorOrClinic"></h4>
-              <p class="text-xs text-gray-500" x-text="formatDateTime(appt.appointmentDate) + ' · ' + (appt.specialty || 'Obstetricia')"></p>
-            </div>
-            <div class="flex space-x-1">
-              <button @click="openEditAppointment(appt)" class="text-xs text-gray-400 hover:text-gray-700 p-1" title="Editar / Registrar vitales">✏️</button>
-              <button @click="deleteAppointment(appt.id)" class="text-xs text-gray-300 hover:text-red-500 p-1" title="Eliminar">🗑️</button>
-            </div>
-          </div>
-
-          <!-- Signos Vitales -->
-          <div class="grid grid-cols-3 gap-2" x-show="appt.momWeightKg || appt.bloodPressure || appt.babyHeartRateBpm">
-            <div class="bg-blue-50/60 rounded-xl p-2 text-center border border-blue-100">
-              <p class="text-[10px] text-blue-700 font-bold">Peso</p>
-              <p class="text-xs font-black text-gray-900" x-text="appt.momWeightKg ? appt.momWeightKg + ' kg' : '—'"></p>
-            </div>
-            <div class="bg-rose-50/60 rounded-xl p-2 text-center border border-rose-100">
-              <p class="text-[10px] text-rose-700 font-bold">Presión</p>
-              <p class="text-xs font-black text-gray-900" x-text="appt.bloodPressure || '—'"></p>
-            </div>
-            <div class="bg-emerald-50/60 rounded-xl p-2 text-center border border-emerald-100">
-              <p class="text-[10px] text-emerald-700 font-bold">FCF Bebé</p>
-              <p class="text-xs font-black text-gray-900" x-text="appt.babyHeartRateBpm ? appt.babyHeartRateBpm + ' lpm' : '—'"></p>
-            </div>
-          </div>
-
-          <div x-show="appt.questionsForDoctor" class="bg-amber-50/60 border border-amber-200 rounded-xl p-2.5 text-xs">
-            <p class="font-bold text-amber-900 text-[11px] mb-0.5">❓ Dudas anotadas para el doctor:</p>
-            <p class="text-gray-700 whitespace-pre-line" x-text="appt.questionsForDoctor"></p>
-          </div>
-
-          <div x-show="appt.doctorNotesAndDiagnosis" class="bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs">
-            <p class="font-bold text-gray-800 text-[11px] mb-0.5">📝 Indicaciones médicas:</p>
-            <p class="text-gray-700 whitespace-pre-line" x-text="appt.doctorNotesAndDiagnosis"></p>
-          </div>
-        </div>
-      </template>
-
-      <div x-show="appointments.length === 0" class="text-center py-10 bg-white rounded-2xl border border-theme space-y-2">
-        <p class="text-2xl">📅</p>
-        <p class="text-xs text-gray-500 font-medium">Aún no has agendado citas médicas prenatales.</p>
-        <button @click="openAppointmentModal()" class="text-xs font-bold text-theme-primary underline">Agendar próxima cita</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ====================================================================== -->
-  <!-- MODAL: SUBIR ESTUDIO O ULTRASONIDO CON MÚLTIPLES FOTOS + PDFs (1:N)    -->
+  <!-- MODAL 1: GUARDAR RESULTADO (CONSULTA, RECETA, LAB O ECO) CON 0:N FILES -->
   <!-- ====================================================================== -->
   <div x-show="showStudyModal" x-cloak class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
     <div @click.outside="showStudyModal = false" class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b pb-2">
-        <h3 class="text-sm font-bold text-gray-900">Subir Estudio / Receta / Eco</h3>
+        <h3 class="text-sm font-bold text-gray-900" x-text="studyModalTitle()"></h3>
         <button @click="showStudyModal = false" class="text-gray-400 hover:text-gray-600 text-lg">&times;</button>
       </div>
 
       <form @submit.prevent="submitStudy" class="space-y-3">
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-xs font-bold text-gray-700 mb-1">Tipo</label>
-            <select x-model="studyForm.studyType" class="w-full px-2.5 py-2 border rounded-xl text-xs bg-white">
-              <option value="LABORATORIO">🔬 Laboratorio</option>
-              <option value="RECETA">💊 Receta Médica</option>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Categoría</label>
+            <select x-model="studyForm.studyType" class="w-full px-2.5 py-2 border rounded-xl text-xs bg-white font-semibold">
+              <option value="DIAGNOSTICO">🩺 Diagnóstico / Visita Médica</option>
+              <option value="RECETA">💊 Receta / Medicamentos</option>
+              <option value="LABORATORIO">🔬 Resultado de Laboratorio</option>
               <option value="ULTRASONIDO">👶 Ultrasonido (Eco)</option>
-              <option value="DOCUMENTO_CLINICO">📁 Documento Clínico</option>
+              <option value="DOCUMENTO_CLINICO">📁 Otro Documento Clínico</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-700 mb-1">Fecha del estudio</label>
-            <input type="date" x-model="studyForm.studyDate" required class="w-full px-2.5 py-2 border rounded-xl text-xs">
+            <label class="block text-xs font-bold text-gray-700 mb-1">Fecha</label>
+            <input type="date" x-model="studyForm.studyDate" @change="checkFutureDateForLab()" required class="w-full px-2.5 py-2 border rounded-xl text-xs">
+          </div>
+        </div>
+
+        <!-- Opción en Laboratorio: Guardar como Cita si la fecha es futura (o por elección del usuario) -->
+        <div x-show="studyForm.studyType === 'LABORATORIO'" class="bg-blue-50/80 border border-blue-200 rounded-2xl p-3 space-y-2">
+          <label class="flex items-start space-x-2 cursor-pointer">
+            <input type="checkbox" x-model="studyForm.saveAsAppointment" class="mt-0.5 rounded text-blue-600">
+            <span class="text-xs font-bold text-blue-900">
+              📅 Guardar como Cita de Laboratorio programada
+              <span x-show="studyForm.studyDate > todayIso" class="inline-block ml-1 px-1.5 py-0.2 bg-amber-200 text-amber-900 rounded text-[10px]">Fecha futura detectada</span>
+            </span>
+          </label>
+          <p class="text-[10px] text-blue-800/80">
+            Si aún no tienes los resultados y es un estudio por realizar, actívalo para agendarlo en Citas sin documento.
+          </p>
+          <div x-show="studyForm.saveAsAppointment" class="pt-1">
+            <label class="block text-[11px] font-bold text-blue-900 mb-1">Hora de la cita en el laboratorio</label>
+            <input type="time" x-model="studyForm.appointmentTime" class="w-full px-2.5 py-1.5 border border-blue-200 rounded-xl text-xs bg-white">
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-gray-700 mb-1">Título descriptivo</label>
-          <input type="text" x-model="studyForm.title" required placeholder="Ej. Biometría Hemática y Receta 1er Trimestre" class="w-full px-3 py-2 border rounded-xl text-sm">
+          <label class="block text-xs font-bold text-gray-700 mb-1" x-text="studyForm.saveAsAppointment ? 'Laboratorio o Estudio a Realizar' : 'Título descriptivo'"></label>
+          <input 
+            type="text" 
+            x-model="studyForm.title" 
+            required 
+            :placeholder="studyTitlePlaceholder()" 
+            class="w-full px-3 py-2 border rounded-xl text-sm">
         </div>
 
-        <div x-show="appointments.length > 0">
-          <label class="block text-xs font-bold text-gray-700 mb-1">Vincular a Cita (Opcional)</label>
+        <div x-show="appointments.length > 0 && !studyForm.saveAsAppointment">
+          <label class="block text-xs font-bold text-gray-700 mb-1">Vincular a Cita Registrada (Opcional)</label>
           <select x-model="studyForm.appointmentId" class="w-full px-2.5 py-2 border rounded-xl text-xs bg-white">
             <option value="">— Sin cita vinculada —</option>
             <template x-for="a in appointments" :key="a.id">
-              <option :value="a.id" x-text="a.doctorOrClinic + ' (' + formatDateTime(a.appointmentDate) + ')'"></option>
+              <option :value="a.id" x-text="appointmentTypeLabel(a.appointmentType) + ' · ' + a.doctorOrClinic + ' (' + formatDateTime(a.appointmentDate) + ')'"></option>
             </template>
           </select>
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-gray-700 mb-1">Notas o Resumen (Opcional)</label>
-          <textarea x-model="studyForm.summaryNotes" rows="2" placeholder="Observaciones del resultado..." class="w-full px-3 py-2 border rounded-xl text-xs"></textarea>
+          <label class="block text-xs font-bold text-gray-700 mb-1" x-text="studyNotesLabel()"></label>
+          <textarea 
+            x-model="studyForm.summaryNotes" 
+            rows="3" 
+            :placeholder="studyNotesPlaceholder()" 
+            class="w-full px-3 py-2 border rounded-xl text-xs"></textarea>
         </div>
 
-        <!-- Selector Híbrido Múltiple (Cámara/Galería + PDFs) -->
-        <div class="bg-theme-primary-light/60 border border-dashed border-theme-primary rounded-2xl p-3 space-y-2">
-          <label class="block text-xs font-bold text-theme-primary">
-            📎 Adjuntar Fotos y/o PDFs (Múltiples archivos)
-          </label>
+        <!-- Selector Híbrido Múltiple (OPCIONAL 0:N — No obliga a subir documento) -->
+        <div x-show="!studyForm.saveAsAppointment" class="bg-theme-primary-light/60 border border-dashed border-theme-primary rounded-2xl p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold text-theme-primary">
+              📎 Adjuntar Fotos y/o PDFs (Opcional)
+            </label>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-gray-600 border">Opcional</span>
+          </div>
           <input 
             type="file" 
             x-ref="studyFilesInput"
             accept="image/*,application/pdf" 
             multiple 
-            required
             @change="handleStudyFilesPreview($event)"
             class="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-theme-primary file:text-white">
-          <p class="text-[10px] text-theme-muted">Puedes seleccionar un PDF de laboratorio y fotos de recetas en el mismo estudio.</p>
+          <p class="text-[10px] text-theme-muted">Puedes guardar únicamente tus notas/diagnóstico/resultados escritos sin archivo, o adjuntar PDFs y fotos ahora o después.</p>
 
           <div x-show="selectedFilesList.length > 0" class="flex flex-wrap gap-1.5 pt-1">
             <template x-for="(fname, idx) in selectedFilesList" :key="idx">
@@ -344,7 +558,7 @@
         <div class="flex space-x-2 pt-2">
           <button type="button" @click="showStudyModal = false" class="w-1/2 py-2 border rounded-xl text-xs font-bold text-gray-600">Cancelar</button>
           <button type="submit" :disabled="submitting" class="w-1/2 py-2 bg-theme-primary text-white rounded-xl text-xs font-bold disabled:opacity-50">
-            <span x-text="submitting ? 'Subiendo...' : 'Guardar Estudio'"></span>
+            <span x-text="submitting ? 'Guardando...' : (studyForm.saveAsAppointment ? 'Agendar Cita Lab' : 'Guardar Registro')"></span>
           </button>
         </div>
       </form>
@@ -352,16 +566,47 @@
   </div>
 
   <!-- ====================================================================== -->
-  <!-- MODAL: AGENDAR / EDITAR CITA PRENATAL                                  -->
+  <!-- MODAL 2: AGENDAR / EDITAR CITA (MÉDICO, LABORATORIO O ECO)             -->
   <!-- ====================================================================== -->
   <div x-show="showApptModal" x-cloak class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
     <div @click.outside="showApptModal = false" class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b pb-2">
-        <h3 class="text-sm font-bold text-gray-900" x-text="apptForm.id ? 'Actualizar Cita Médica' : 'Agendar Cita Prenatal'"></h3>
+        <h3 class="text-sm font-bold text-gray-900" x-text="apptForm.id ? 'Actualizar Cita' : 'Agendar Nueva Cita'"></h3>
         <button @click="showApptModal = false" class="text-gray-400 hover:text-gray-600 text-lg">&times;</button>
       </div>
 
       <form @submit.prevent="submitAppointment" class="space-y-3">
+        <!-- Selector de Tipo de Cita: Médico, Laboratorio o Eco -->
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1.5">Tipo de Cita</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button 
+              type="button"
+              @click="apptForm.appointmentType = 'MEDICO'"
+              :class="apptForm.appointmentType === 'MEDICO' ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-gray-50 text-gray-700 border-gray-200'"
+              class="py-2 px-2 rounded-xl text-xs font-bold border transition flex items-center justify-center space-x-1">
+              <span>🩺</span>
+              <span>Médico</span>
+            </button>
+            <button 
+              type="button"
+              @click="apptForm.appointmentType = 'LABORATORIO'"
+              :class="apptForm.appointmentType === 'LABORATORIO' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-gray-50 text-gray-700 border-gray-200'"
+              class="py-2 px-2 rounded-xl text-xs font-bold border transition flex items-center justify-center space-x-1">
+              <span>🔬</span>
+              <span>Laboratorio</span>
+            </button>
+            <button 
+              type="button"
+              @click="apptForm.appointmentType = 'ECO'"
+              :class="apptForm.appointmentType === 'ECO' ? 'bg-purple-600 text-white border-purple-600 shadow-xs' : 'bg-gray-50 text-gray-700 border-gray-200'"
+              class="py-2 px-2 rounded-xl text-xs font-bold border transition flex items-center justify-center space-x-1">
+              <span>👶</span>
+              <span>Eco</span>
+            </button>
+          </div>
+        </div>
+
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-bold text-gray-700 mb-1">Fecha y Hora</label>
@@ -378,11 +623,17 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-gray-700 mb-1">Médico o Clínica</label>
-          <input type="text" x-model="apptForm.doctorOrClinic" required placeholder="Ej. Dra. García · Hospital Ángeles" class="w-full px-3 py-2 border rounded-xl text-sm">
+          <label class="block text-xs font-bold text-gray-700 mb-1" x-text="apptForm.appointmentType === 'LABORATORIO' ? 'Laboratorio / Sucursal o Estudio' : (apptForm.appointmentType === 'ECO' ? 'Clínica o Especialista de Ultrasonido' : 'Médico o Clínica')"></label>
+          <input 
+            type="text" 
+            x-model="apptForm.doctorOrClinic" 
+            required 
+            :placeholder="apptForm.appointmentType === 'LABORATORIO' ? 'Ej. Salud Digna / Chopo · Curva de Tolerancia' : (apptForm.appointmentType === 'ECO' ? 'Ej. Eco Estructural · Dr. Morales' : 'Ej. Dra. García · Hospital Ángeles')" 
+            class="w-full px-3 py-2 border rounded-xl text-sm">
         </div>
 
-        <div class="grid grid-cols-3 gap-2">
+        <!-- Signos Vitales (visibles para Médico y Eco, opcionales) -->
+        <div class="grid grid-cols-3 gap-2" x-show="apptForm.appointmentType !== 'LABORATORIO'">
           <div>
             <label class="block text-[11px] font-bold text-gray-700 mb-1">Peso (kg)</label>
             <input type="number" step="0.1" x-model="apptForm.momWeightKg" placeholder="62.5" class="w-full px-2.5 py-1.5 border rounded-xl text-xs">
@@ -398,13 +649,17 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-gray-700 mb-1">Preguntas para el doctor</label>
-          <textarea x-model="apptForm.questionsForDoctor" rows="2" placeholder="Anota tus dudas de la semana..." class="w-full px-3 py-2 border rounded-xl text-xs"></textarea>
+          <label class="block text-xs font-bold text-gray-700 mb-1" x-text="apptForm.appointmentType === 'LABORATORIO' ? 'Estudios a realizar / Indicaciones previas (ej. ayuno)' : 'Preguntas o notas previas para la cita'"></label>
+          <textarea 
+            x-model="apptForm.questionsForDoctor" 
+            rows="2" 
+            :placeholder="apptForm.appointmentType === 'LABORATORIO' ? 'Ej. Biometría hemática, Examen general de orina (8 hrs de ayuno)...' : 'Anota tus dudas de la semana para el doctor...'" 
+            class="w-full px-3 py-2 border rounded-xl text-xs"></textarea>
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-gray-700 mb-1">Diagnóstico / Indicaciones</label>
-          <textarea x-model="apptForm.doctorNotesAndDiagnosis" rows="2" placeholder="Indicaciones después de la consulta..." class="w-full px-3 py-2 border rounded-xl text-xs"></textarea>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Notas / Indicaciones posteriores (Opcional)</label>
+          <textarea x-model="apptForm.doctorNotesAndDiagnosis" rows="2" placeholder="Observaciones rápidas de la cita..." class="w-full px-3 py-2 border rounded-xl text-xs"></textarea>
         </div>
 
         <div class="flex space-x-2 pt-2">
@@ -420,8 +675,10 @@
 <script>
 function medicalApp() {
   return {
-    activeSubTab: 'estudios',
-    studyFilter: 'ALL',
+    activeSubTab: 'citas',
+    apptFilter: 'ALL',
+    visitFilter: 'ALL',
+    todayIso: '{{ today_iso }}',
     studies: {{ studies_json | safe }},
     appointments: {{ appointments_json | safe }},
     showStudyModal: false,
@@ -429,14 +686,17 @@ function medicalApp() {
     submitting: false,
     selectedFilesList: [],
     studyForm: {
-      studyType: 'LABORATORIO',
+      studyType: 'DIAGNOSTICO',
       title: '',
       studyDate: '{{ today_iso }}',
       appointmentId: '',
-      summaryNotes: ''
+      summaryNotes: '',
+      saveAsAppointment: false,
+      appointmentTime: '08:00'
     },
     apptForm: {
       id: null,
+      appointmentType: 'MEDICO',
       appointmentDate: '',
       doctorOrClinic: '',
       status: 'SCHEDULED',
@@ -450,25 +710,90 @@ function medicalApp() {
       const hash = window.location.hash;
       if (hash === '#ecos') this.activeSubTab = 'ecos';
       else if (hash === '#citas') this.activeSubTab = 'citas';
+      else if (hash === '#laboratorio' || hash === '#estudios') this.activeSubTab = 'laboratorio';
+      else if (hash === '#consultas') this.activeSubTab = 'consultas';
     },
-    get nonUltraStudies() {
-      return this.studies.filter(s => s.studyType !== 'ULTRASONIDO');
+    get filteredAppointments() {
+      if (this.apptFilter === 'ALL') return this.appointments;
+      return this.appointments.filter(a => (a.appointmentType || 'MEDICO') === this.apptFilter);
     },
-    get filteredNonUltraStudies() {
-      if (this.studyFilter === 'ALL') return this.nonUltraStudies;
-      return this.nonUltraStudies.filter(s => s.studyType === this.studyFilter);
+    get scheduledLabAppointments() {
+      return this.appointments.filter(a => a.appointmentType === 'LABORATORIO' && a.status === 'SCHEDULED');
+    },
+    get medicalVisitResults() {
+      return this.studies.filter(s => ['DIAGNOSTICO', 'RECETA', 'DOCUMENTO_CLINICO'].includes(s.studyType));
+    },
+    get filteredMedicalVisitResults() {
+      if (this.visitFilter === 'ALL') return this.medicalVisitResults;
+      return this.medicalVisitResults.filter(s => s.studyType === this.visitFilter);
+    },
+    get labResults() {
+      return this.studies.filter(s => s.studyType === 'LABORATORIO');
     },
     get ultrasounds() {
       return this.studies.filter(s => s.studyType === 'ULTRASONIDO');
     },
+    appointmentTypeLabel(t) {
+      const map = {
+        MEDICO: '🩺 Cita Médica',
+        LABORATORIO: '🔬 Cita Laboratorio',
+        ECO: '👶 Cita Eco'
+      };
+      return map[t || 'MEDICO'] || '🩺 Cita Médica';
+    },
+    appointmentTypeBadgeClass(t) {
+      const tp = t || 'MEDICO';
+      if (tp === 'LABORATORIO') return 'bg-blue-50 text-blue-700 border-blue-200';
+      if (tp === 'ECO') return 'bg-purple-50 text-purple-700 border-purple-200';
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    },
+    defaultSpecialtyForType(t) {
+      if (t === 'LABORATORIO') return 'Estudios de Laboratorio';
+      if (t === 'ECO') return 'Ultrasonido Obstétrico';
+      return 'Obstetricia y Ginecología';
+    },
     studyTypeLabel(t) {
       const map = {
+        DIAGNOSTICO: '🩺 Diagnóstico / Visita',
+        RECETA: '💊 Receta Médica',
         LABORATORIO: '🔬 Laboratorio',
-        RECETA: '💊 Receta',
         DOCUMENTO_CLINICO: '📁 Doc. Clínico',
         ULTRASONIDO: '👶 Ultrasonido'
       };
       return map[t] || t;
+    },
+    studyModalTitle() {
+      if (this.studyForm.studyType === 'DIAGNOSTICO') return 'Guardar Diagnóstico / Visita Médica';
+      if (this.studyForm.studyType === 'RECETA') return 'Guardar Receta / Medicamentos';
+      if (this.studyForm.studyType === 'LABORATORIO') return 'Laboratorio: Resultado o Cita Futura';
+      if (this.studyForm.studyType === 'ULTRASONIDO') return 'Guardar Ultrasonido (Eco)';
+      return 'Guardar Documento Clínico';
+    },
+    studyTitlePlaceholder() {
+      if (this.studyForm.studyType === 'DIAGNOSTICO') return 'Ej. Revisión Mensual · Todo en orden';
+      if (this.studyForm.studyType === 'RECETA') return 'Ej. Receta Vitaminas Prenatales y Hierro';
+      if (this.studyForm.studyType === 'LABORATORIO') return 'Ej. Biometría Hemática y Química Sanguínea';
+      if (this.studyForm.studyType === 'ULTRASONIDO') return 'Ej. Ultrasonido Estructural 2do Trimestre';
+      return 'Ej. Certificado o Resumen Clínico';
+    },
+    studyNotesLabel() {
+      if (this.studyForm.studyType === 'DIAGNOSTICO') return 'Diagnóstico e Indicaciones del Médico';
+      if (this.studyForm.studyType === 'RECETA') return 'Medicamentos, Dosis y Horarios Recetados';
+      if (this.studyForm.studyType === 'LABORATORIO') {
+        return this.studyForm.saveAsAppointment ? 'Estudios a realizar / Preparación (ej. ayuno)' : 'Resultados o Valores Relevantes (Opcional)';
+      }
+      return 'Notas o Resumen (Opcional)';
+    },
+    studyNotesPlaceholder() {
+      if (this.studyForm.studyType === 'DIAGNOSTICO') return 'Escribe el diagnóstico de la visita, peso, indicaciones y cuidados recomendados...';
+      if (this.studyForm.studyType === 'RECETA') return 'Ej. Regenesis Max 1 cápsula cada 24 hrs con el desayuno...';
+      if (this.studyForm.studyType === 'LABORATORIO') return 'Escribe aquí los valores o notas del resultado (puedes guardarlo sin adjuntar documento)...';
+      return 'Observaciones del resultado...';
+    },
+    checkFutureDateForLab() {
+      if (this.studyForm.studyType === 'LABORATORIO' && this.studyForm.studyDate > this.todayIso) {
+        this.studyForm.saveAsAppointment = true;
+      }
     },
     formatBytes(bytes) {
       if (!bytes) return '0 KB';
@@ -482,11 +807,28 @@ function medicalApp() {
     },
     openStudyModal(defaultType) {
       this.studyForm = {
-        studyType: defaultType || 'LABORATORIO',
+        studyType: defaultType || 'DIAGNOSTICO',
         title: '',
-        studyDate: '{{ today_iso }}',
+        studyDate: this.todayIso,
         appointmentId: '',
-        summaryNotes: ''
+        summaryNotes: '',
+        saveAsAppointment: false,
+        appointmentTime: '08:00'
+      };
+      this.selectedFilesList = [];
+      if (this.$refs.studyFilesInput) this.$refs.studyFilesInput.value = '';
+      this.showStudyModal = true;
+    },
+    openResultFromAppointment(appt, targetStudyType) {
+      const apptDateOnly = (appt.appointmentDate || '').slice(0, 10) || this.todayIso;
+      this.studyForm = {
+        studyType: targetStudyType,
+        title: appt.doctorOrClinic,
+        studyDate: apptDateOnly,
+        appointmentId: appt.id,
+        summaryNotes: appt.doctorNotesAndDiagnosis || '',
+        saveAsAppointment: false,
+        appointmentTime: '08:00'
       };
       this.selectedFilesList = [];
       if (this.$refs.studyFilesInput) this.$refs.studyFilesInput.value = '';
@@ -504,13 +846,38 @@ function medicalApp() {
       this.appointments = await aRes.json();
     },
     async submitStudy() {
-      const input = this.$refs.studyFilesInput;
-      if (!input || !input.files || input.files.length === 0) {
-        alert('Selecciona al menos una foto o PDF.');
-        return;
-      }
       this.submitting = true;
       try {
+        // Si en Laboratorio eligió guardar como Cita (fecha futura o casilla activada):
+        if (this.studyForm.studyType === 'LABORATORIO' && this.studyForm.saveAsAppointment) {
+          const timePart = this.studyForm.appointmentTime || '08:00';
+          const isoDateTime = `${this.studyForm.studyDate}T${timePart}`;
+          const apptPayload = {
+            appointmentType: 'LABORATORIO',
+            appointmentDate: isoDateTime,
+            doctorOrClinic: this.studyForm.title,
+            specialty: 'Estudios de Laboratorio',
+            status: 'SCHEDULED',
+            questionsForDoctor: this.studyForm.summaryNotes || null
+          };
+          const res = await fetch('/api/v1/medical/appointments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(apptPayload)
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Error al agendar cita de laboratorio');
+          }
+          this.showStudyModal = false;
+          this.activeSubTab = 'citas';
+          this.apptFilter = 'LABORATORIO';
+          await this.refreshMedicalData();
+          return;
+        }
+
+        // Guardado normal de Resultado (Diagnóstico, Receta, Laboratorio o Eco) con 0:N archivos:
+        const input = this.$refs.studyFilesInput;
         const fd = new FormData();
         fd.append('studyType', this.studyForm.studyType);
         fd.append('title', this.studyForm.title);
@@ -518,18 +885,21 @@ function medicalApp() {
         fd.append('createdBy', BabyTrack.getActiveParent());
         if (this.studyForm.summaryNotes) fd.append('summaryNotes', this.studyForm.summaryNotes);
         if (this.studyForm.appointmentId) fd.append('appointmentId', this.studyForm.appointmentId);
-        for (const file of input.files) {
-          fd.append('files', file);
+        if (input && input.files && input.files.length > 0) {
+          for (const file of input.files) {
+            fd.append('files', file);
+          }
         }
 
         const res = await fetch('/api/v1/medical/studies', { method: 'POST', body: fd });
         if (!res.ok) {
           const err = await res.json();
-          throw new Error(err.detail || 'Error al subir estudio');
+          throw new Error(err.detail || 'Error al guardar registro médico');
         }
         this.showStudyModal = false;
         if (this.studyForm.studyType === 'ULTRASONIDO') this.activeSubTab = 'ecos';
-        else this.activeSubTab = 'estudios';
+        else if (this.studyForm.studyType === 'LABORATORIO') this.activeSubTab = 'laboratorio';
+        else this.activeSubTab = 'consultas';
         await this.refreshMedicalData();
       } catch (e) {
         alert(e.message);
@@ -552,15 +922,16 @@ function medicalApp() {
       }
     },
     async deleteStudy(id) {
-      if (!confirm('¿Eliminar este estudio y todos sus archivos?')) return;
+      if (!confirm('¿Eliminar este registro y sus archivos adjuntos?')) return;
       const res = await fetch(`/api/v1/medical/studies/${id}`, { method: 'DELETE' });
       if (res.ok) await this.refreshMedicalData();
     },
-    openAppointmentModal() {
+    openAppointmentModal(defaultType) {
       const now = new Date();
       now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
       this.apptForm = {
         id: null,
+        appointmentType: defaultType || 'MEDICO',
         appointmentDate: now.toISOString().slice(0, 16),
         doctorOrClinic: '',
         status: 'SCHEDULED',
@@ -575,6 +946,7 @@ function medicalApp() {
     openEditAppointment(appt) {
       this.apptForm = {
         id: appt.id,
+        appointmentType: appt.appointmentType || 'MEDICO',
         appointmentDate: (appt.appointmentDate || '').slice(0, 16),
         doctorOrClinic: appt.doctorOrClinic,
         status: appt.status,
@@ -590,6 +962,7 @@ function medicalApp() {
       this.submitting = true;
       try {
         const payload = {
+          appointmentType: this.apptForm.appointmentType || 'MEDICO',
           appointmentDate: this.apptForm.appointmentDate,
           doctorOrClinic: this.apptForm.doctorOrClinic,
           status: this.apptForm.status,
@@ -611,6 +984,7 @@ function medicalApp() {
           throw new Error(err.detail || 'Error al guardar cita');
         }
         this.showApptModal = false;
+        this.activeSubTab = 'citas';
         await this.refreshMedicalData();
       } catch (e) {
         alert(e.message);
@@ -619,7 +993,7 @@ function medicalApp() {
       }
     },
     async deleteAppointment(id) {
-      if (!confirm('¿Eliminar esta cita médica?')) return;
+      if (!confirm('¿Eliminar esta cita de la agenda?')) return;
       const res = await fetch(`/api/v1/medical/appointments/${id}`, { method: 'DELETE' });
       if (res.ok) await this.refreshMedicalData();
     }
