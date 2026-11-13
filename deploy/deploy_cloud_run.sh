@@ -24,12 +24,13 @@ echo "   • Proyecto: $PROJECT_ID"
 echo "   • Región:   $REGION"
 echo "   • Bucket:   gs://$BUCKET_NAME (Tus datos guardados se conservan intactos)"
 
-# 1. Habilitar APIs necesarias
+# 1. Habilitar APIs necesarias (incluyendo Google Calendar API)
 gcloud services enable \
   run.googleapis.com \
   storage.googleapis.com \
   cloudbuild.googleapis.com \
   artifactregistry.googleapis.com \
+  calendar-json.googleapis.com \
   --project "$PROJECT_ID"
 
 # 2. Asegurar permisos IAM de la cuenta de servicio de construcción/ejecución

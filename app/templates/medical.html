@@ -3,6 +3,43 @@
 {% block content %}
 <div x-data="medicalApp()" x-init="init()" class="space-y-4">
 
+  <!-- ====================================================================== -->
+  <!-- SISTEMA DE ALERTA CUIDADOSA EN PANTALLA (CITAS DE HOY O MAÑANA - 24H)  -->
+  <!-- ====================================================================== -->
+  <div x-show="imminentAppointments.length > 0" x-cloak class="bg-amber-50 border-2 border-amber-300 rounded-3xl p-4 shadow-sm space-y-2.5">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <span class="text-lg">⏰</span>
+        <div>
+          <p class="text-xs font-black uppercase tracking-wider text-amber-900">Recordatorio Cuidadoso de Cita</p>
+          <p class="text-[11px] text-amber-800 font-medium">Tienes <span x-text="imminentAppointments.length"></span> cita(s) programada(s) para hoy o mañana:</p>
+        </div>
+      </div>
+    </div>
+    <div class="space-y-2">
+      <template x-for="ia in imminentAppointments" :key="ia.id">
+        <div class="bg-white rounded-2xl p-3 border border-amber-200 flex items-start justify-between gap-2">
+          <div class="space-y-0.5 min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900" x-text="imminentBadgeText(ia)"></span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border" :class="appointmentTypeBadgeClass(ia.appointmentType)" x-text="appointmentTypeLabel(ia.appointmentType)"></span>
+            </div>
+            <p class="text-xs font-extrabold text-gray-900 truncate" x-text="ia.doctorOrClinic"></p>
+            <p class="text-[11px] text-gray-600 font-semibold" x-text="formatDateTime(ia.appointmentDate)"></p>
+            <p x-show="ia.questionsForDoctor" class="text-[11px] text-amber-900 bg-amber-50/70 px-2 py-1 rounded-lg mt-1" x-text="'📋 Importante: ' + ia.questionsForDoctor"></p>
+          </div>
+          <a 
+            :href="ia.googleCalendarTemplateUrl" 
+            target="_blank" 
+            rel="noopener"
+            class="px-2.5 py-1.5 rounded-xl bg-amber-600 text-white text-[10px] font-bold flex-shrink-0 hover:bg-amber-700">
+            📅 Ver en Calendar
+          </a>
+        </div>
+      </template>
+    </div>
+  </div>
+
   <!-- Banner Superior del Módulo Médico + Botón Modo Consulta -->
   <div class="bg-white rounded-3xl p-5 border border-theme shadow-theme space-y-3">
     <div class="flex items-center justify-between gap-2">
@@ -73,9 +110,44 @@
   </div>
 
   <!-- ====================================================================== -->
-  <!-- TAB 1: CITAS (AGENDA DE MÉDICO, LABORATORIO Y ECO)                     -->
+  <!-- TAB 1: CITAS (AGENDA DE MÉDICO, LABORATORIO Y ECO + GOOGLE CALENDAR)   -->
   <!-- ====================================================================== -->
   <section x-show="activeSubTab === 'citas'" class="space-y-3">
+
+    <!-- Barra Dual de Google Calendar (Opción 1: .ics / Link Directo + Opción 2: API Auto-Sync) -->
+    <div class="bg-white rounded-2xl p-3.5 border border-theme shadow-2xs flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center space-x-2 min-w-0">
+        <span class="text-lg">📆</span>
+        <div class="min-w-0">
+          <div class="flex items-center space-x-1.5">
+            <p class="text-xs font-extrabold text-gray-900">Google Calendar & Alertas (1 día antes)</p>
+            <span 
+              x-show="googleCalendarId" 
+              class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+              ✓ Auto-Sync Activo
+            </span>
+          </div>
+          <p class="text-[11px] text-gray-500 truncate" x-text="googleCalendarId ? ('Vinculado a: ' + googleCalendarId) : 'Agrega citas con 1 toque o activa la sincronización automática'"></p>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <a 
+          href="/api/v1/medical/calendar.ics"
+          class="px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-bold transition flex items-center space-x-1"
+          title="Descargar o suscribir todas las citas y la FPP con alertas de 1 día antes">
+          <span>📲</span>
+          <span>Calendario .ics</span>
+        </a>
+        <button 
+          type="button"
+          @click="showCalendarModal = true"
+          class="px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[11px] font-bold transition flex items-center space-x-1">
+          <span>🔗</span>
+          <span x-text="googleCalendarId ? 'Ajustes Sync' : 'Vincular Google'"></span>
+        </button>
+      </div>
+    </div>
+
     <div class="flex items-center justify-between gap-2">
       <!-- Filtros por Tipo de Cita -->
       <div class="flex items-center space-x-1.5 overflow-x-auto pb-1">
@@ -104,6 +176,8 @@
                   class="px-2 py-0.5 rounded-full text-[10px] font-bold"
                   x-text="appt.status === 'COMPLETED' ? '✓ Realizada' : (appt.status === 'CANCELLED' ? 'Cancelada' : '🕒 Programada')"></span>
                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-primary-light text-theme-primary" x-text="'Sem ' + appt.gestationalWeek + ', Día ' + appt.gestationalDay"></span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200" x-text="'⏰ Alerta: ' + reminderLabel(appt.reminderMinutesBefore)"></span>
+                <span x-show="appt.googleEventId" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">☁️ Sync Google</span>
               </div>
               <h4 class="text-sm font-extrabold text-gray-900" x-text="appt.doctorOrClinic"></h4>
               <p class="text-xs text-gray-500" x-text="formatDateTime(appt.appointmentDate) + ' · ' + (appt.specialty || defaultSpecialtyForType(appt.appointmentType))"></p>
@@ -140,26 +214,46 @@
             <p class="text-gray-700 whitespace-pre-line" x-text="appt.doctorNotesAndDiagnosis"></p>
           </div>
 
-          <!-- Acción Rápida para guardar el resultado de esta cita -->
-          <div class="pt-1 flex items-center justify-end border-t border-gray-100">
-            <template x-if="(appt.appointmentType || 'MEDICO') === 'MEDICO'">
-              <button type="button" @click="openResultFromAppointment(appt, 'DIAGNOSTICO')" class="text-[11px] font-bold text-theme-primary hover:underline flex items-center space-x-1">
-                <span>🩺</span>
-                <span>+ Guardar Diagnóstico o Receta de esta visita</span>
-              </button>
-            </template>
-            <template x-if="appt.appointmentType === 'LABORATORIO'">
-              <button type="button" @click="openResultFromAppointment(appt, 'LABORATORIO')" class="text-[11px] font-bold text-blue-700 hover:underline flex items-center space-x-1">
-                <span>🔬</span>
-                <span>+ Guardar Resultados de este Laboratorio</span>
-              </button>
-            </template>
-            <template x-if="appt.appointmentType === 'ECO'">
-              <button type="button" @click="openResultFromAppointment(appt, 'ULTRASONIDO')" class="text-[11px] font-bold text-purple-700 hover:underline flex items-center space-x-1">
-                <span>👶</span>
-                <span>+ Guardar Ultrasonido de esta cita</span>
-              </button>
-            </template>
+          <!-- Botones de Calendario (Opción 1: Google Calendar 1 toque + Alerta .ics) y Acción de Resultado -->
+          <div class="pt-1.5 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100">
+            <div class="flex items-center gap-1.5">
+              <a 
+                :href="appt.googleEventLink || appt.googleCalendarTemplateUrl" 
+                target="_blank" 
+                rel="noopener"
+                class="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[11px] font-bold transition flex items-center space-x-1">
+                <span>📅</span>
+                <span x-text="appt.googleEventLink ? 'Ver en Google Calendar' : '+ Google Calendar'"></span>
+              </a>
+              <a 
+                :href="appt.icsDownloadUrl || ('/api/v1/medical/appointments/' + appt.id + '/calendar.ics')"
+                class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-bold transition flex items-center space-x-1"
+                title="Descargar evento con alarma automática 1 día antes">
+                <span>🔔</span>
+                <span>Alerta .ics</span>
+              </a>
+            </div>
+
+            <div>
+              <template x-if="(appt.appointmentType || 'MEDICO') === 'MEDICO'">
+                <button type="button" @click="openResultFromAppointment(appt, 'DIAGNOSTICO')" class="text-[11px] font-bold text-theme-primary hover:underline flex items-center space-x-1">
+                  <span>🩺</span>
+                  <span>+ Guardar Diagnóstico / Receta</span>
+                </button>
+              </template>
+              <template x-if="appt.appointmentType === 'LABORATORIO'">
+                <button type="button" @click="openResultFromAppointment(appt, 'LABORATORIO')" class="text-[11px] font-bold text-blue-700 hover:underline flex items-center space-x-1">
+                  <span>🔬</span>
+                  <span>+ Guardar Resultado Lab</span>
+                </button>
+              </template>
+              <template x-if="appt.appointmentType === 'ECO'">
+                <button type="button" @click="openResultFromAppointment(appt, 'ULTRASONIDO')" class="text-[11px] font-bold text-purple-700 hover:underline flex items-center space-x-1">
+                  <span>👶</span>
+                  <span>+ Guardar Ultrasonido</span>
+                </button>
+              </template>
+            </div>
           </div>
         </div>
       </template>
@@ -297,15 +391,18 @@
           <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
             <div class="min-w-0">
               <p class="text-xs font-bold text-gray-900 truncate" x-text="la.doctorOrClinic"></p>
-              <p class="text-[11px] text-gray-600" x-text="formatDateTime(la.appointmentDate) + ' · Sem ' + la.gestationalWeek"></p>
+              <p class="text-[11px] text-gray-600" x-text="formatDateTime(la.appointmentDate) + ' · Sem ' + la.gestationalWeek + ' · ⏰ Alerta 1 día antes'"></p>
               <p x-show="la.questionsForDoctor" class="text-[11px] text-blue-800 mt-0.5" x-text="la.questionsForDoctor"></p>
             </div>
-            <button 
-              type="button"
-              @click="openResultFromAppointment(la, 'LABORATORIO')"
-              class="px-2.5 py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold flex-shrink-0">
-              + Subir Resultado
-            </button>
+            <div class="flex items-center gap-1 flex-shrink-0">
+              <a :href="la.googleCalendarTemplateUrl" target="_blank" rel="noopener" class="px-2 py-1.5 rounded-lg bg-white text-blue-700 border border-blue-200 text-[10px] font-bold" title="Añadir a Google Calendar">📅</a>
+              <button 
+                type="button"
+                @click="openResultFromAppointment(la, 'LABORATORIO')"
+                class="px-2.5 py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold">
+                + Subir Resultado
+              </button>
+            </div>
           </div>
         </template>
       </div>
@@ -489,12 +586,12 @@
           <label class="flex items-start space-x-2 cursor-pointer">
             <input type="checkbox" x-model="studyForm.saveAsAppointment" class="mt-0.5 rounded text-blue-600">
             <span class="text-xs font-bold text-blue-900">
-              📅 Guardar como Cita de Laboratorio programada
+              📅 Guardar como Cita de Laboratorio programada (con alerta 1 día antes)
               <span x-show="studyForm.studyDate > todayIso" class="inline-block ml-1 px-1.5 py-0.2 bg-amber-200 text-amber-900 rounded text-[10px]">Fecha futura detectada</span>
             </span>
           </label>
           <p class="text-[10px] text-blue-800/80">
-            Si aún no tienes los resultados y es un estudio por realizar, actívalo para agendarlo en Citas sin documento.
+            Si aún no tienes los resultados y es un estudio por realizar, actívalo para agendarlo en Citas y Google Calendar sin documento.
           </p>
           <div x-show="studyForm.saveAsAppointment" class="pt-1">
             <label class="block text-[11px] font-bold text-blue-900 mb-1">Hora de la cita en el laboratorio</label>
@@ -566,7 +663,7 @@
   </div>
 
   <!-- ====================================================================== -->
-  <!-- MODAL 2: AGENDAR / EDITAR CITA (MÉDICO, LABORATORIO O ECO)             -->
+  <!-- MODAL 2: AGENDAR / EDITAR CITA (MÉDICO, LABORATORIO O ECO + ALERTA)    -->
   <!-- ====================================================================== -->
   <div x-show="showApptModal" x-cloak class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
     <div @click.outside="showApptModal = false" class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
@@ -632,6 +729,16 @@
             class="w-full px-3 py-2 border rounded-xl text-sm">
         </div>
 
+        <!-- Sistema de Alerta Cuidadosa para Google Calendar -->
+        <div class="bg-amber-50/70 border border-amber-200 rounded-2xl p-2.5">
+          <label class="block text-xs font-bold text-amber-900 mb-1">⏰ Sistema de Alerta en Calendario</label>
+          <select x-model="apptForm.reminderMinutesBefore" class="w-full px-2.5 py-1.5 border border-amber-200 rounded-xl text-xs bg-white font-semibold text-gray-800">
+            <option value="1440">🔔 1 día antes (24 horas) + 2 horas antes (Recomendado)</option>
+            <option value="2880">🔔 2 días antes (48 horas) + 2 horas antes</option>
+            <option value="720">🔔 12 horas antes + 2 horas antes</option>
+          </select>
+        </div>
+
         <!-- Signos Vitales (visibles para Médico y Eco, opcionales) -->
         <div class="grid grid-cols-3 gap-2" x-show="apptForm.appointmentType !== 'LABORATORIO'">
           <div>
@@ -670,6 +777,72 @@
     </div>
   </div>
 
+  <!-- ====================================================================== -->
+  <!-- MODAL 3: VINCULAR GOOGLE CALENDAR AUTOMÁTICO + SUSCRIPCIÓN .ICS        -->
+  <!-- ====================================================================== -->
+  <div x-show="showCalendarModal" x-cloak class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div @click.outside="showCalendarModal = false" class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-sm font-extrabold text-gray-900">📆 Google Calendar y Alertas (1 día antes)</h3>
+        <button @click="showCalendarModal = false" class="text-gray-400 hover:text-gray-600 text-lg">&times;</button>
+      </div>
+
+      <!-- Opción 1: Botón directo y Suscripción .ics -->
+      <div class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-3.5 space-y-2">
+        <p class="text-xs font-extrabold text-emerald-900">🟢 Opción 1: Uso Inmediato en el Celular (Ya activa)</p>
+        <p class="text-[11px] text-emerald-800">
+          En cada cita tienes el botón <strong>📅 + Google Calendar</strong> (abre tu app de Google Calendar con 1 toque) y el botón <strong>🔔 Alerta .ics</strong> (que programa automáticamente la alarma 1 día antes y 2 horas antes).
+        </p>
+        <div class="pt-1 flex items-center gap-2">
+          <a 
+            href="/api/v1/medical/calendar.ics" 
+            class="w-full py-2 px-3 rounded-xl bg-emerald-600 text-white text-xs font-bold text-center shadow hover:bg-emerald-700 transition">
+            📲 Descargar Todas las Citas + FPP (.ics)
+          </a>
+        </div>
+      </div>
+
+      <!-- Opción 2: Sincronización Automática API en Segundo Plano -->
+      <div class="bg-blue-50/70 border border-blue-200 rounded-2xl p-3.5 space-y-2.5">
+        <p class="text-xs font-extrabold text-blue-900">🔵 Opción 2: Sincronización Automática en Segundo Plano</p>
+        <p class="text-[11px] text-blue-800">
+          Para que BabyTrack cree, actualice o borre las citas solito en tu Google Calendar con <strong>alerta automática por notificación y correo 1 día antes</strong>:
+        </p>
+        <ol class="text-[11px] text-blue-900 space-y-1.5 list-decimal list-inside bg-white/80 p-2.5 rounded-xl border border-blue-100">
+          <li>En tu computadora entra a <strong>Google Calendar → Configuración → Tu calendario → Compartir con personas específicas</strong>.</li>
+          <li>Agrega esta cuenta del servidor con el permiso <strong>"Hacer cambios en eventos"</strong>:
+            <div class="mt-1 p-1.5 bg-gray-100 rounded font-mono text-[10px] break-all select-all text-gray-800">1079143066290-compute@developer.gserviceaccount.com</div>
+          </li>
+          <li>Escribe abajo tu correo Gmail (ej. <code>darielgameplay@gmail.com</code>) o el ID de tu calendario compartido:</li>
+        </ol>
+
+        <form @submit.prevent="saveAndSyncGoogleCalendar" class="space-y-2 pt-1">
+          <div>
+            <label class="block text-[11px] font-bold text-blue-900 mb-1">Tu Correo Gmail o ID de Google Calendar</label>
+            <input 
+              type="text" 
+              x-model="calendarConfigInput" 
+              placeholder="Ej. darielgameplay@gmail.com" 
+              class="w-full px-3 py-2 border border-blue-200 rounded-xl text-xs bg-white">
+          </div>
+          <div class="flex gap-2">
+            <button 
+              type="submit" 
+              :disabled="syncingCalendar"
+              class="w-full py-2 px-3 rounded-xl bg-blue-600 text-white text-xs font-bold shadow hover:bg-blue-700 disabled:opacity-50">
+              <span x-text="syncingCalendar ? 'Sincronizando con Google...' : '💾 Guardar y Sincronizar Citas Ahora'"></span>
+            </button>
+          </div>
+          <p x-show="calendarSyncMessage" class="text-[11px] font-bold text-center pt-1" :class="calendarSyncSuccess ? 'text-emerald-700' : 'text-amber-700'" x-text="calendarSyncMessage"></p>
+        </form>
+      </div>
+
+      <div class="flex justify-end">
+        <button type="button" @click="showCalendarModal = false" class="px-4 py-2 border rounded-xl text-xs font-bold text-gray-600">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -679,11 +852,17 @@ function medicalApp() {
     apptFilter: 'ALL',
     visitFilter: 'ALL',
     todayIso: '{{ today_iso }}',
+    googleCalendarId: '{{ google_calendar_id }}',
+    calendarConfigInput: '{{ google_calendar_id }}',
     studies: {{ studies_json | safe }},
     appointments: {{ appointments_json | safe }},
     showStudyModal: false,
     showApptModal: false,
+    showCalendarModal: false,
     submitting: false,
+    syncingCalendar: false,
+    calendarSyncMessage: '',
+    calendarSyncSuccess: true,
     selectedFilesList: [],
     studyForm: {
       studyType: 'DIAGNOSTICO',
@@ -700,6 +879,7 @@ function medicalApp() {
       appointmentDate: '',
       doctorOrClinic: '',
       status: 'SCHEDULED',
+      reminderMinutesBefore: '1440',
       momWeightKg: '',
       bloodPressure: '',
       babyHeartRateBpm: '',
@@ -712,6 +892,28 @@ function medicalApp() {
       else if (hash === '#citas') this.activeSubTab = 'citas';
       else if (hash === '#laboratorio' || hash === '#estudios') this.activeSubTab = 'laboratorio';
       else if (hash === '#consultas') this.activeSubTab = 'consultas';
+    },
+    get imminentAppointments() {
+      // Detecta citas PROGRAMADAS que ocurren hoy o mañana (dentro de las próximas 36 horas)
+      const now = new Date();
+      const startOfToday = new Date(this.todayIso + 'T00:00:00');
+      const maxWindow = new Date(startOfToday.getTime() + 48 * 60 * 60 * 1000);
+      return this.appointments.filter(a => {
+        if (a.status !== 'SCHEDULED' || !a.appointmentDate) return false;
+        const dt = new Date(a.appointmentDate);
+        return dt >= startOfToday && dt <= maxWindow;
+      });
+    },
+    imminentBadgeText(appt) {
+      const apptDay = (appt.appointmentDate || '').slice(0, 10);
+      if (apptDay === this.todayIso) return '🚨 ¡HOY!';
+      return '⏰ ¡MAÑANA (Alerta 1 día antes)!';
+    },
+    reminderLabel(mins) {
+      const m = parseInt(mins || 1440, 10);
+      if (m === 2880) return '2 días antes';
+      if (m === 720) return '12 hrs antes';
+      return '1 día antes';
     },
     get filteredAppointments() {
       if (this.apptFilter === 'ALL') return this.appointments;
@@ -748,9 +950,9 @@ function medicalApp() {
       return 'bg-emerald-50 text-emerald-700 border-emerald-200';
     },
     defaultSpecialtyForType(t) {
-      if (t === 'LABORATORIO') return 'Estudios de Laboratorio';
+      if (t === 'LABORATORIO') return 'Análisis Clínicos / Laboratorio';
       if (t === 'ECO') return 'Ultrasonido Obstétrico';
-      return 'Obstetricia y Ginecología';
+      return 'Ginecología y Obstetricia';
     },
     studyTypeLabel(t) {
       const map = {
@@ -856,8 +1058,9 @@ function medicalApp() {
             appointmentType: 'LABORATORIO',
             appointmentDate: isoDateTime,
             doctorOrClinic: this.studyForm.title,
-            specialty: 'Estudios de Laboratorio',
+            specialty: 'Análisis Clínicos / Laboratorio',
             status: 'SCHEDULED',
+            reminderMinutesBefore: 1440,
             questionsForDoctor: this.studyForm.summaryNotes || null
           };
           const res = await fetch('/api/v1/medical/appointments', {
@@ -935,6 +1138,7 @@ function medicalApp() {
         appointmentDate: now.toISOString().slice(0, 16),
         doctorOrClinic: '',
         status: 'SCHEDULED',
+        reminderMinutesBefore: '1440',
         momWeightKg: '',
         bloodPressure: '',
         babyHeartRateBpm: '',
@@ -950,6 +1154,7 @@ function medicalApp() {
         appointmentDate: (appt.appointmentDate || '').slice(0, 16),
         doctorOrClinic: appt.doctorOrClinic,
         status: appt.status,
+        reminderMinutesBefore: String(appt.reminderMinutesBefore || 1440),
         momWeightKg: appt.momWeightKg ?? '',
         bloodPressure: appt.bloodPressure || '',
         babyHeartRateBpm: appt.babyHeartRateBpm ?? '',
@@ -966,6 +1171,7 @@ function medicalApp() {
           appointmentDate: this.apptForm.appointmentDate,
           doctorOrClinic: this.apptForm.doctorOrClinic,
           status: this.apptForm.status,
+          reminderMinutesBefore: parseInt(this.apptForm.reminderMinutesBefore || '1440', 10),
           momWeightKg: this.apptForm.momWeightKg !== '' ? parseFloat(this.apptForm.momWeightKg) : null,
           bloodPressure: this.apptForm.bloodPressure || null,
           babyHeartRateBpm: this.apptForm.babyHeartRateBpm !== '' ? parseInt(this.apptForm.babyHeartRateBpm, 10) : null,
@@ -996,6 +1202,44 @@ function medicalApp() {
       if (!confirm('¿Eliminar esta cita de la agenda?')) return;
       const res = await fetch(`/api/v1/medical/appointments/${id}`, { method: 'DELETE' });
       if (res.ok) await this.refreshMedicalData();
+    },
+    async saveAndSyncGoogleCalendar() {
+      this.syncingCalendar = true;
+      this.calendarSyncMessage = '';
+      try {
+        const cfgRes = await fetch('/api/v1/medical/calendar/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ googleCalendarId: this.calendarConfigInput })
+        });
+        if (!cfgRes.ok) throw new Error('Error al guardar el ID de Google Calendar');
+        const cfgData = await cfgRes.json();
+        this.googleCalendarId = cfgData.googleCalendarId || '';
+
+        if (!this.googleCalendarId) {
+          this.calendarSyncSuccess = true;
+          this.calendarSyncMessage = 'Sincronización automática desactivada.';
+          return;
+        }
+
+        const syncRes = await fetch('/api/v1/medical/calendar/sync', { method: 'POST' });
+        const syncData = await syncRes.json();
+        if (syncRes.ok) {
+          await this.refreshMedicalData();
+          if (syncData.syncedCount > 0 || syncData.totalAppointments === 0) {
+            this.calendarSyncSuccess = true;
+            this.calendarSyncMessage = `✓ ¡Listo! ${syncData.syncedCount} de ${syncData.totalAppointments} cita(s) sincronizadas con alerta de 1 día antes.`;
+          } else {
+            this.calendarSyncSuccess = false;
+            this.calendarSyncMessage = `ID guardado. Para que Google permita sincronizar, asegúrate de compartir tu calendario con la cuenta del servidor. (${(syncData.errors && syncData.errors[0]) || ''})`;
+          }
+        }
+      } catch (e) {
+        this.calendarSyncSuccess = false;
+        this.calendarSyncMessage = e.message;
+      } finally {
+        this.syncingCalendar = false;
+      }
     }
   };
 }

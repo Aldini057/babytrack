@@ -164,6 +164,7 @@ def render_medical(request: Request, db: Session = Depends(get_db)):
         name="medical.html",
         context={
             "settings": record,
+            "google_calendar_id": (record.google_calendar_id or settings.GOOGLE_CALENDAR_ID or ""),
             "studies_json": json.dumps([s.model_dump(mode="json") for s in studies]),
             "appointments_json": json.dumps([a.model_dump(mode="json") for a in appointments]),
             "today_iso": today_iso,

@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     DEFAULT_DUE_DATE: str = "2027-07-07"
     FAMILY_ACCESS_PIN: str = "0707"
+    GOOGLE_CALENDAR_ID: str = ""
     
     # Base paths
     BASE_DIR: Path = Path(__file__).resolve().parent.parent

@@ -20,6 +20,9 @@ class MedicalAppointment(Base):
     questions_for_doctor = Column(Text, nullable=True)
     doctor_notes_and_diagnosis = Column(Text, nullable=True)
     status = Column(String(20), nullable=False, default="SCHEDULED")  # SCHEDULED, COMPLETED, CANCELLED
+    reminder_minutes_before = Column(Integer, nullable=False, default=1440)  # 1440 min = 24 hrs (1 día antes)
+    google_event_id = Column(String(255), nullable=True)
+    google_event_link = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     studies = relationship("MedicalStudy", back_populates="appointment")

@@ -317,10 +317,65 @@ def test_non_destructive_schema_migration_preserves_existing_rows(tmp_path):
 
     with legacy_engine.connect() as conn:
         row = conn.execute(
-            text("SELECT doctor_or_clinic, appointment_type FROM medical_appointments WHERE id = 1")
+            text("SELECT doctor_or_clinic, appointment_type, reminder_minutes_before FROM medical_appointments WHERE id = 1")
         ).fetchone()
         assert row is not None
         assert row[0] == "Dra. Existente"
         assert row[1] == "MEDICO"
+        assert row[2] == 1440
+
+
+def test_google_calendar_links_ics_and_1_day_before_alerts(client):
+    """
+    Verifica las 2 opciones de Google Calendar juntas + sistema de alerta de 1 día antes:
+    1. Enlace directo a Google Calendar (googleCalendarTemplateUrl) y recordatorio por defecto (1440 min = 24h).
+    2. Archivo .ics individual y feed .ics completo con alarmas VALARM (-PT1440M y -PT120M) + FPP (-P1D).
+    3. Configuración de ID de Google Calendar para sincronización automática API.
+    """
+    res = client.post(
+        "/api/v1/medical/appointments",
+        json={
+            "appointmentType": "LABORATORIO",
+            "appointmentDate": "2026-12-15T08:00:00",
+            "doctorOrClinic": "Salud Digna · Biometría y Glucosa",
+            "questionsForDoctor": "Ayuno estricto de 8 horas",
+            "reminderMinutesBefore": 1440,
+        },
+    )
+    assert res.status_code == 201
+    appt = res.json()
+    assert appt["reminderMinutesBefore"] == 1440
+    assert "calendar.google.com/calendar/render?action=TEMPLATE" in appt["googleCalendarTemplateUrl"]
+    assert "20261215T080000" in appt["googleCalendarTemplateUrl"]
+
+    # Descargar .ics individual con alarma de 1 día antes (-PT1440M) y 2 horas antes (-PT120M)
+    ics_single = client.get(f"/api/v1/medical/appointments/{appt['id']}/calendar.ics")
+    assert ics_single.status_code == 200
+    assert "text/calendar" in ics_single.headers["content-type"]
+    assert "BEGIN:VCALENDAR" in ics_single.text
+    assert "TRIGGER:-PT1440M" in ics_single.text
+    assert "TRIGGER:-PT120M" in ics_single.text
+    assert "Salud Digna" in ics_single.text
+
+    # Descargar feed .ics completo (incluye la cita + la Fecha Probable de Parto FPP con TRIGGER:-P1D)
+    ics_feed = client.get("/api/v1/medical/calendar.ics")
+    assert ics_feed.status_code == 200
+    assert "Fecha Probable de Parto (FPP)" in ics_feed.text
+    assert "TRIGGER:-P1D" in ics_feed.text
+    assert "TRIGGER:-PT1440M" in ics_feed.text
+
+    # Configurar correo de Google Calendar para auto-sync (Opción 2)
+    cfg_put = client.put(
+        "/api/v1/medical/calendar/config",
+        json={"googleCalendarId": "darielgameplay@gmail.com"},
+    )
+    assert cfg_put.status_code == 200
+    assert cfg_put.json()["googleCalendarId"] == "darielgameplay@gmail.com"
+    assert cfg_put.json()["isConfigured"] is True
+
+    cfg_get = client.get("/api/v1/medical/calendar/config")
+    assert cfg_get.status_code == 200
+    assert cfg_get.json()["googleCalendarId"] == "darielgameplay@gmail.com"
+
 
 

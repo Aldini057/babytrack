@@ -18,6 +18,7 @@ class AppointmentCreate(BaseModel):
     questionsForDoctor: Optional[str] = None
     doctorNotesAndDiagnosis: Optional[str] = None
     status: str = Field("SCHEDULED")
+    reminderMinutesBefore: Optional[int] = Field(1440, ge=10, le=10080, description="1440 = 1 día antes")
 
 
 class AppointmentUpdate(BaseModel):
@@ -31,6 +32,7 @@ class AppointmentUpdate(BaseModel):
     questionsForDoctor: Optional[str] = None
     doctorNotesAndDiagnosis: Optional[str] = None
     status: Optional[str] = None
+    reminderMinutesBefore: Optional[int] = Field(None, ge=10, le=10080)
 
 
 class AppointmentResponse(BaseModel):
@@ -47,7 +49,16 @@ class AppointmentResponse(BaseModel):
     questionsForDoctor: Optional[str]
     doctorNotesAndDiagnosis: Optional[str]
     status: str
+    reminderMinutesBefore: int = 1440
+    googleEventId: Optional[str] = None
+    googleEventLink: Optional[str] = None
+    googleCalendarTemplateUrl: Optional[str] = None
+    icsDownloadUrl: Optional[str] = None
     createdAt: datetime
+
+
+class CalendarConfigPayload(BaseModel):
+    googleCalendarId: Optional[str] = Field(None, max_length=255)
 
 
 class StudyAttachmentResponse(BaseModel):
