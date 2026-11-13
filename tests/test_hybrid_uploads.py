@@ -420,7 +420,7 @@ def test_family_share_public_view_and_guestbook_notes(client):
     assert len(res_fam_notes.json()) == 1
     assert res_fam_notes.json()[0]["authorDisplayName"] == "Abuelita Carmen (Abuela Materna)"
 
-    # 4. Verificar renderizado de /familia y /compartir en modo solo lectura
+    # 4. Verificar renderizado de /familia y /compartir en modo solo lectura y privacidad de notas
     for path in ("/familia", "/compartir"):
         page = client.get(path)
         assert page.status_code == 200
@@ -428,7 +428,9 @@ def test_family_share_public_view_and_guestbook_notes(client):
         assert "del embarazo completado" in page.text
         assert "Tamaño equivalente hoy" in page.text
         assert "Eco Compartido con la Familia" in page.text
-        assert "Abuelita Carmen (Abuela Materna)" in page.text
+        # Asegurar que las notas guardadas NO se muestren al público en /familia
+        assert "Ya queremos conocerte y consentirte mucho." not in page.text
+        assert "Abuelita Carmen (Abuela Materna)" not in page.text
         # Asegurar que no incluye botones para cambiar el género ni calibrar fechas
         assert "updateGenderTheme" not in page.text
         assert "Calibrar Semanas" not in page.text
