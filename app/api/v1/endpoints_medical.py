@@ -363,6 +363,8 @@ def sync_all_appointments_to_google_calendar(db: Session = Depends(get_db)):
     """
     Sincroniza todas las citas activas con Google Calendar API (Opción 2),
     creando o actualizando cada evento con alerta de 1 día antes (1440 min).
+    Si el correo ingresado daba HTTP 404 (no compartido manualmente), crea automáticamente
+    el calendario compartido "🍼 BabyTrack" y le da permisos al correo del usuario.
     """
     settings_rec = get_or_create_settings(db)
     cal_id = GoogleCalendarService.get_effective_calendar_id(settings_rec)
@@ -371,6 +373,18 @@ def sync_all_appointments_to_google_calendar(db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Primero ingresa tu correo o ID de Google Calendar en la configuración.",
         )
+
+    # Verificar acceso o auto-crear calendario compartido "🍼 BabyTrack" con permisos para el usuario
+    ensured = GoogleCalendarService.ensure_accessible_calendar(
+        cal_id, baby_nickname=settings_rec.baby_nickname
+    )
+    auto_created = False
+    add_calendar_url = None
+    if ensured.get("ok") and ensured.get("calendarId"):
+        cal_id = ensured["calendarId"]
+        settings_rec.google_calendar_id = cal_id
+        auto_created = bool(ensured.get("autoCreated"))
+        add_calendar_url = ensured.get("addCalendarUrl")
 
     appointments = (
         db.query(MedicalAppointment)
@@ -388,6 +402,9 @@ def sync_all_appointments_to_google_calendar(db: Session = Depends(get_db)):
         if res.get("synced"):
             appt.google_event_id = res.get("eventId")
             appt.google_event_link = res.get("htmlLink")
+            if res.get("calendarId") and res.get("calendarId") != cal_id:
+                cal_id = res["calendarId"]
+                settings_rec.google_calendar_id = cal_id
             synced_count += 1
         else:
             errors.append(res.get("reason", "Error desconocido"))
@@ -397,6 +414,8 @@ def sync_all_appointments_to_google_calendar(db: Session = Depends(get_db)):
         "totalAppointments": len(appointments),
         "syncedCount": synced_count,
         "calendarId": cal_id,
+        "autoCreatedCalendar": auto_created,
+        "addCalendarUrl": add_calendar_url,
         "errors": errors[:3],
     }
 

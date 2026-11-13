@@ -18,10 +18,12 @@ class GoogleCalendarService:
        - Genera enlaces directos `calendar.google.com/calendar/render` para abrir en el celular.
        - Genera archivos y feeds suscribibles `.ics` (iCalendar RFC 5545) con alarmas VALARM
          automáticas 1 día antes (-P1D / 1440 min) y 2 horas antes (-PT2H / 120 min).
-    2. Opción 2 (Sincronización Automática API en Segundo Plano):
-       - Usa las credenciales nativas de Google Cloud Run (Metadata Server) para crear,
-         actualizar o eliminar eventos directamente en el Google Calendar compartido,
-         configurando recordatorios automáticos 1 día antes (popup + email) y 2 horas antes.
+    2. Opción 2 (Sincronización Automática API en Segundo Plano con Auto-Provisión):
+       - Si el usuario ya compartió su calendario personal con la cuenta de servicio, escribe ahí.
+       - Si devuelve HTTP 404 (porque en el celular Google no muestra el menú de compartir calendario),
+         el servidor CREA AUTOMÁTICAMENTE un calendario compartido "🍼 BabyTrack", le otorga permisos
+         de edición (ACL writer) al correo Gmail del usuario (ej. darielgameplay@gmail.com) y sincroniza
+         todas las citas ahí sin errores.
     """
 
     TYPE_LABELS = {
@@ -261,6 +263,138 @@ class GoogleCalendarService:
             return None
 
     @classmethod
+    def _api_request(
+        cls,
+        url: str,
+        token: str,
+        method: str = "GET",
+        body: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        headers = {"Authorization": f"Bearer {token}"}
+        data_bytes = None
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+            data_bytes = json.dumps(body).encode("utf-8")
+
+        req = urllib.request.Request(url, data=data_bytes, headers=headers, method=method)
+        with urllib.request.urlopen(req, timeout=6.0) as resp:
+            raw = resp.read().decode("utf-8")
+            return json.loads(raw) if raw else {}
+
+    @classmethod
+    def ensure_accessible_calendar(
+        cls,
+        user_input_id_or_email: str,
+        baby_nickname: str = "Nuestro Bebé",
+        token: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Verifica si el `calendar_id` o correo ingresado es accesible directamente.
+        Si devuelve HTTP 404 (porque el usuario no ha compartido manualmente su calendario
+        personal desde una PC), el servidor CREA o REUTILIZA automáticamente un calendario
+        compartido "🍼 BabyTrack" en la cuenta del servidor y le da acceso (ACL writer +
+        lectura pública por enlace) al correo Gmail del usuario para que funcione sin fricción.
+        """
+        clean_input = (user_input_id_or_email or "").strip()
+        if not clean_input:
+            return {"ok": False, "reason": "ID vacío"}
+
+        access_token = token or cls._fetch_gcp_access_token()
+        if not access_token:
+            return {"ok": False, "calendarId": clean_input, "reason": "Sin token GCP"}
+
+        # Extraer posibles correos separados por coma (ej. mamá y papá)
+        emails = [
+            e.strip()
+            for e in clean_input.replace(";", ",").split(",")
+            if "@" in e and not e.strip().endswith("@group.calendar.google.com")
+        ]
+        primary_candidate = clean_input.split(",")[0].strip()
+
+        # 1. Probar si el calendario candidato ya es directamente accesible (ej. ya fue compartido o es un group.calendar.google.com)
+        encoded_cand = quote(primary_candidate, safe="")
+        try:
+            cal_meta = cls._api_request(
+                f"https://www.googleapis.com/calendar/v3/calendars/{encoded_cand}",
+                access_token,
+                method="GET",
+            )
+            if cal_meta.get("id"):
+                return {
+                    "ok": True,
+                    "calendarId": cal_meta["id"],
+                    "autoCreated": False,
+                    "sharedWith": emails,
+                    "addCalendarUrl": f"https://calendar.google.com/calendar/r?cid={quote(cal_meta['id'], safe='')}",
+                }
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                return {"ok": False, "calendarId": primary_candidate, "reason": f"HTTP {e.code}"}
+        except Exception as exc:
+            return {"ok": False, "calendarId": primary_candidate, "reason": str(exc)}
+
+        # 2. Si dio 404, buscamos si la cuenta de servicio ya creó previamente un calendario "🍼 BabyTrack"
+        target_cal_id = None
+        try:
+            cal_list = cls._api_request(
+                "https://www.googleapis.com/calendar/v3/users/me/calendarList",
+                access_token,
+                method="GET",
+            )
+            for item in cal_list.get("items", []):
+                if "BabyTrack" in (item.get("summary") or ""):
+                    target_cal_id = item.get("id")
+                    break
+        except Exception:
+            pass
+
+        # 3. Si no existe aún, crear el calendario "🍼 BabyTrack - Nuestro Bebé"
+        if not target_cal_id:
+            try:
+                created = cls._api_request(
+                    "https://www.googleapis.com/calendar/v3/calendars",
+                    access_token,
+                    method="POST",
+                    body={
+                        "summary": f"🍼 BabyTrack — {baby_nickname}",
+                        "description": "Calendario automático de Citas Médicas, Laboratorio, Ecos y FPP de BabyTrack.",
+                        "timeZone": settings.TZ or "America/Mexico_City",
+                    },
+                )
+                target_cal_id = created.get("id")
+            except Exception as exc:
+                return {"ok": False, "calendarId": primary_candidate, "reason": f"No se pudo auto-crear calendario: {exc}"}
+
+        if not target_cal_id:
+            return {"ok": False, "calendarId": primary_candidate, "reason": "No se obtuvo ID del calendario creado."}
+
+        # 4. Compartir automáticamente (ACL writer) con todos los correos Gmail ingresados
+        encoded_target = quote(target_cal_id, safe="")
+        shared_ok = []
+        for email_addr in emails:
+            try:
+                cls._api_request(
+                    f"https://www.googleapis.com/calendar/v3/calendars/{encoded_target}/acl?sendNotifications=true",
+                    access_token,
+                    method="POST",
+                    body={
+                        "role": "writer",
+                        "scope": {"type": "user", "value": email_addr},
+                    },
+                )
+                shared_ok.append(email_addr)
+            except Exception:
+                pass
+
+        return {
+            "ok": True,
+            "calendarId": target_cal_id,
+            "autoCreated": True,
+            "sharedWith": shared_ok,
+            "addCalendarUrl": f"https://calendar.google.com/calendar/r?cid={quote(target_cal_id, safe='')}",
+        }
+
+    @classmethod
     def sync_appointment_to_google_calendar(
         cls,
         appt: MedicalAppointment,
@@ -271,7 +405,7 @@ class GoogleCalendarService:
         Crea o actualiza automáticamente el evento en Google Calendar vía REST API v3,
         configurando recordatorios automáticos 1 día antes (1440 min, popup + email)
         y 2 horas antes (120 min, popup).
-        Nunca lanza excepciones que bloqueen el guardado local en SQLite.
+        Si el `calendar_id` devuelve 404, auto-provisiona un calendario compartido BabyTrack.
         """
         cal_id = (calendar_id or "").strip()
         if not cal_id:
@@ -321,7 +455,6 @@ class GoogleCalendarService:
         encoded_cal = quote(cal_id, safe="")
         base_url = f"https://www.googleapis.com/calendar/v3/calendars/{encoded_cal}/events"
 
-        # Si ya tiene google_event_id, intentamos actualizar (PUT); si no existe, creamos (POST)
         if appt.google_event_id:
             encoded_evt = quote(appt.google_event_id, safe="")
             target_url = f"{base_url}/{encoded_evt}"
@@ -331,44 +464,32 @@ class GoogleCalendarService:
             method = "POST"
 
         try:
-            req = urllib.request.Request(
-                target_url,
-                data=json.dumps(event_body).encode("utf-8"),
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                },
-                method=method,
-            )
-            with urllib.request.urlopen(req, timeout=6.0) as resp:
-                resp_data = json.loads(resp.read().decode("utf-8"))
-                return {
-                    "synced": True,
-                    "eventId": resp_data.get("id"),
-                    "htmlLink": resp_data.get("htmlLink"),
-                }
+            resp_data = cls._api_request(target_url, token, method=method, body=event_body)
+            return {
+                "synced": True,
+                "calendarId": cal_id,
+                "eventId": resp_data.get("id"),
+                "htmlLink": resp_data.get("htmlLink"),
+            }
         except urllib.error.HTTPError as e:
-            # Si el evento fue borrado manualmente en Google Calendar (404/410) al hacer PUT, reintentar con POST
-            if method == "PUT" and e.code in (404, 410):
-                try:
-                    req_post = urllib.request.Request(
-                        base_url,
-                        data=json.dumps(event_body).encode("utf-8"),
-                        headers={
-                            "Authorization": f"Bearer {token}",
-                            "Content-Type": "application/json",
-                        },
-                        method="POST",
-                    )
-                    with urllib.request.urlopen(req_post, timeout=6.0) as resp2:
-                        resp_data = json.loads(resp2.read().decode("utf-8"))
+            # Si falló con 404/410 en PUT (el evento fue borrado o cambió de calendario), o si el calendario dio 404:
+            if e.code in (404, 410):
+                ensured = cls.ensure_accessible_calendar(cal_id, baby_nickname=baby_nickname, token=token)
+                if ensured.get("ok") and ensured.get("calendarId"):
+                    resolved_cal_id = ensured["calendarId"]
+                    new_base_url = f"https://www.googleapis.com/calendar/v3/calendars/{quote(resolved_cal_id, safe='')}/events"
+                    try:
+                        resp_data = cls._api_request(new_base_url, token, method="POST", body=event_body)
                         return {
                             "synced": True,
+                            "calendarId": resolved_cal_id,
+                            "autoCreatedCalendar": ensured.get("autoCreated", False),
+                            "addCalendarUrl": ensured.get("addCalendarUrl"),
                             "eventId": resp_data.get("id"),
                             "htmlLink": resp_data.get("htmlLink"),
                         }
-                except Exception as inner_exc:
-                    return {"synced": False, "reason": str(inner_exc)}
+                    except Exception as inner_exc:
+                        return {"synced": False, "reason": str(inner_exc)}
             err_body = ""
             try:
                 err_body = e.read().decode("utf-8")
