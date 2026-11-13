@@ -1,0 +1,126 @@
+<!-- Modal de Seguridad Familiar Ligera (PIN Compartido + Selector Mamá/Papá) -->
+<div 
+  x-data="familyPinGate()"
+  @open-pin-modal.window="open()"
+  x-show="isOpen"
+  x-cloak
+  class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-md">
+
+  <div 
+    @click.outside="if(authenticated) close()"
+    class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-theme space-y-4 text-center">
+
+    <div class="w-14 h-14 mx-auto rounded-2xl bg-theme-primary-light border border-theme-primary/30 flex items-center justify-center text-3xl">
+      🔒
+    </div>
+
+    <div class="space-y-1">
+      <h3 class="text-base font-extrabold text-gray-900">Acceso Familiar Privado</h3>
+      <p class="text-xs text-theme-muted">
+        Protege la cápsula del bebé con el PIN familiar (<code class="font-bold">0707</code> por defecto) y elige tu perfil:
+      </p>
+    </div>
+
+    <!-- Estado actual si ya está autenticado -->
+    <template x-if="authenticated">
+      <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-800 space-y-2">
+        <p class="font-bold">✓ Sesión Familiar Activa (<span x-text="activeParent === 'MAMA' ? 'Mamá' : 'Papá'"></span>)</p>
+        <div class="flex space-x-2">
+          <button type="button" @click="close()" class="w-1/2 py-1.5 rounded-xl bg-white border border-emerald-300 font-bold text-emerald-800">Continuar</button>
+          <button type="button" @click="logout()" class="w-1/2 py-1.5 rounded-xl bg-red-500 text-white font-bold">Bloquear / Salir</button>
+        </div>
+      </div>
+    </template>
+
+    <!-- Formulario de ingreso de PIN -->
+    <form @submit.prevent="submitPin()" class="space-y-3 text-left">
+      <div>
+        <label class="block text-xs font-bold text-gray-700 mb-1.5 text-center">¿Quién ingresa en este teléfono?</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button 
+            type="button"
+            @click="selectedParent = 'MAMA'"
+            :class="selectedParent === 'MAMA' ? 'bg-rose-500 text-white border-rose-600 shadow-xs' : 'bg-gray-50 text-gray-700 border-gray-200'"
+            class="py-2 rounded-xl border text-xs font-bold transition">
+            👩 Soy Mamá
+          </button>
+          <button 
+            type="button"
+            @click="selectedParent = 'PAPA'"
+            :class="selectedParent === 'PAPA' ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs' : 'bg-gray-50 text-gray-700 border-gray-200'"
+            class="py-2 rounded-xl border text-xs font-bold transition">
+            👨 Soy Papá
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-gray-700 mb-1 text-center">PIN de Acceso Familiar</label>
+        <input 
+          type="password" 
+          inputmode="numeric"
+          x-model="pinInput"
+          placeholder="••••"
+          maxlength="12"
+          required
+          class="w-full px-4 py-2.5 border rounded-2xl text-center text-lg font-black tracking-widest focus:ring-2 focus:ring-emerald-500 outline-none">
+        <p x-show="errorMsg" class="text-xs text-red-600 font-bold text-center mt-1" x-text="errorMsg"></p>
+      </div>
+
+      <div class="flex space-x-2 pt-1">
+        <button type="button" @click="close()" class="w-1/2 py-2.5 border border-gray-200 rounded-xl text-xs font-bold text-gray-600">Cerrar</button>
+        <button type="submit" class="w-1/2 py-2.5 bg-theme-primary text-white rounded-xl text-xs font-bold shadow">Desbloquear</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function familyPinGate() {
+  return {
+    isOpen: false,
+    authenticated: {{ 'true' if auth_status.authenticated else 'false' }},
+    activeParent: '{{ auth_status.activeParent }}',
+    selectedParent: BabyTrack.getActiveParent(),
+    pinInput: '',
+    errorMsg: '',
+    open() {
+      this.selectedParent = BabyTrack.getActiveParent();
+      this.errorMsg = '';
+      this.isOpen = true;
+    },
+    close() {
+      this.isOpen = false;
+    },
+    async submitPin() {
+      this.errorMsg = '';
+      const res = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pin: this.pinInput,
+          activeParent: this.selectedParent
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        this.errorMsg = err.detail || 'PIN incorrecto';
+        return;
+      }
+      const data = await res.json();
+      this.authenticated = data.authenticated;
+      this.activeParent = data.activeParent;
+      BabyTrack.setActiveParent(data.activeParent);
+      this.pinInput = '';
+      this.isOpen = false;
+      window.dispatchEvent(new CustomEvent('auth-updated', { detail: data }));
+    },
+    async logout() {
+      await fetch('/api/v1/auth/logout', { method: 'POST' });
+      this.authenticated = false;
+      this.isOpen = false;
+      window.dispatchEvent(new CustomEvent('auth-updated', { detail: { authenticated: false } }));
+    }
+  };
+}
+</script>

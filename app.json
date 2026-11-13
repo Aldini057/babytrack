@@ -1,0 +1,31 @@
+{
+  "name": "babytrack",
+  "description": "BabyTrack - Plataforma Web Full-Stack para el Seguimiento Obstétrico, Preparativos y Cápsula Familiar (FPP 07/07/2027)",
+  "env": {
+    "APP_ENV": {
+      "description": "Entorno de ejecución",
+      "value": "production"
+    },
+    "TZ": {
+      "description": "Zona horaria local para el cálculo obstétrico",
+      "value": "America/Mexico_City"
+    },
+    "DEFAULT_DUE_DATE": {
+      "description": "Fecha Probable de Parto (FPP)",
+      "value": "2027-07-07"
+    },
+    "FAMILY_ACCESS_PIN": {
+      "description": "PIN de acceso familiar compartido (Mamá y Papá)",
+      "value": "0707"
+    },
+    "DATA_DIR": {
+      "description": "Directorio unificado de base de datos y archivos subidos",
+      "value": "/app/data"
+    }
+  },
+  "options": {
+    "allow-unauthenticated": true,
+    "memory": "512Mi",
+    "cpu": "1"
+  }
+}

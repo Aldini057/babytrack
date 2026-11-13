@@ -1,0 +1,143 @@
+<!-- Visor Modal Integrado Híbrido (Lightbox con Zoom para Fotos + Iframe para PDFs) -->
+<div 
+  x-data="fileViewerModal()"
+  @open-file-viewer.window="open($event.detail)"
+  @keydown.escape.window="close()"
+  x-show="isOpen"
+  x-cloak
+  class="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm">
+
+  <!-- Barra Superior del Visor -->
+  <div class="flex items-center justify-between px-4 py-3 bg-black/60 text-white border-b border-white/10">
+    <div class="min-w-0 pr-3">
+      <p class="text-[10px] uppercase tracking-wider text-gray-300 font-bold" x-text="studyTitle || 'Archivo Médico'"></p>
+      <h4 class="text-xs font-semibold truncate" x-text="currentFile ? currentFile.originalFilename : ''"></h4>
+    </div>
+
+    <div class="flex items-center space-x-2 flex-shrink-0">
+      <!-- Controles de Zoom para Imágenes -->
+      <template x-if="currentFile && currentFile.fileCategory === 'IMAGE'">
+        <div class="flex items-center space-x-1 bg-white/10 rounded-lg px-1.5 py-1">
+          <button type="button" @click="zoomOut()" class="px-2 py-0.5 text-xs font-bold hover:bg-white/20 rounded" title="Alejar">−</button>
+          <button type="button" @click="resetZoom()" class="px-1.5 py-0.5 text-[11px] font-mono" x-text="Math.round(zoom * 100) + '%'"></button>
+          <button type="button" @click="zoomIn()" class="px-2 py-0.5 text-xs font-bold hover:bg-white/20 rounded" title="Acercar">+</button>
+        </div>
+      </template>
+
+      <!-- Abrir en pestaña / Descargar -->
+      <a 
+        x-show="currentFile"
+        :href="currentFile ? currentFile.url : '#'"
+        target="_blank"
+        rel="noopener"
+        class="px-2.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-bold transition">
+        ↗️ Abrir
+      </a>
+
+      <!-- Cerrar -->
+      <button 
+        type="button" 
+        @click="close()" 
+        class="w-8 h-8 rounded-full bg-white/15 hover:bg-white/30 flex items-center justify-center text-lg font-bold">
+        &times;
+      </button>
+    </div>
+  </div>
+
+  <!-- Área Principal de Contenido -->
+  <div class="flex-1 relative overflow-auto flex items-center justify-center p-3">
+    <!-- Vista de Imagen con Zoom -->
+    <template x-if="currentFile && currentFile.fileCategory === 'IMAGE'">
+      <div class="overflow-auto w-full h-full flex items-center justify-center">
+        <img 
+          :src="currentFile.url" 
+          :alt="currentFile.originalFilename"
+          @dblclick="toggleDoubleTapZoom()"
+          :style="'transform: scale(' + zoom + '); transform-origin: center center;'"
+          class="max-w-full max-h-[80vh] object-contain rounded-lg transition-transform duration-200 select-none cursor-zoom-in">
+      </div>
+    </template>
+
+    <!-- Vista Embebida de PDF -->
+    <template x-if="currentFile && currentFile.fileCategory === 'PDF'">
+      <div class="w-full h-full max-w-3xl flex flex-col bg-white rounded-2xl overflow-hidden shadow-2xl">
+        <iframe 
+          :src="currentFile.url + '#view=FitH'" 
+          class="w-full flex-1 border-0 min-h-[75vh]"
+          title="Visor PDF BabyTrack">
+        </iframe>
+        <div class="bg-gray-100 px-4 py-2 text-center border-t border-gray-200">
+          <p class="text-[11px] text-gray-600">
+            ¿No se previsualiza el PDF en tu navegador móvil?
+            <a :href="currentFile.url" target="_blank" class="font-bold text-theme-primary underline ml-1">Abrir PDF completo aquí</a>
+          </p>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Barra de Navegación entre Adjuntos del Estudio (1:N) -->
+  <div x-show="attachments.length > 1" class="px-4 py-3 bg-black/70 border-t border-white/10 flex items-center justify-between text-white">
+    <button 
+      type="button"
+      @click="prev()"
+      class="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-xs font-bold">
+      ← Anterior
+    </button>
+    <span class="text-xs font-semibold text-gray-300">
+      Archivo <span x-text="index + 1"></span> de <span x-text="attachments.length"></span>
+    </span>
+    <button 
+      type="button"
+      @click="next()"
+      class="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-xs font-bold">
+      Siguiente →
+    </button>
+  </div>
+</div>
+
+<script>
+function fileViewerModal() {
+  return {
+    isOpen: false,
+    attachments: [],
+    index: 0,
+    studyTitle: '',
+    zoom: 1,
+    get currentFile() {
+      return this.attachments[this.index] || null;
+    },
+    open(detail) {
+      this.attachments = detail.attachments || [];
+      this.index = detail.index || 0;
+      this.studyTitle = detail.studyTitle || '';
+      this.zoom = 1;
+      this.isOpen = true;
+    },
+    close() {
+      this.isOpen = false;
+      this.zoom = 1;
+    },
+    zoomIn() {
+      this.zoom = Math.min(3.5, Number((this.zoom + 0.4).toFixed(2)));
+    },
+    zoomOut() {
+      this.zoom = Math.max(0.6, Number((this.zoom - 0.4).toFixed(2)));
+    },
+    resetZoom() {
+      this.zoom = 1;
+    },
+    toggleDoubleTapZoom() {
+      this.zoom = this.zoom > 1.1 ? 1 : 2.0;
+    },
+    prev() {
+      this.index = (this.index - 1 + this.attachments.length) % this.attachments.length;
+      this.zoom = 1;
+    },
+    next() {
+      this.index = (this.index + 1) % this.attachments.length;
+      this.zoom = 1;
+    }
+  };
+}
+</script>

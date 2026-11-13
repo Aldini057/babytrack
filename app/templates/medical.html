@@ -1,0 +1,629 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div x-data="medicalApp()" x-init="init()" class="space-y-4">
+
+  <!-- Banner Superior del Módulo Médico + Botón Modo Consulta -->
+  <div class="bg-white rounded-3xl p-5 border border-theme shadow-theme space-y-3">
+    <div class="flex items-center justify-between gap-2">
+      <div>
+        <p class="text-[11px] uppercase tracking-wider font-bold text-theme-muted">Control Prenatal & Historial</p>
+        <h2 class="text-lg font-extrabold text-gray-900">Médico, Estudios y Ecos</h2>
+      </div>
+      <button 
+        type="button"
+        @click="BabyTrack.openConsultationMode()"
+        class="px-3.5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:opacity-90 transition flex items-center space-x-1.5 flex-shrink-0">
+        <span>🩺</span>
+        <span>Modo Consulta</span>
+      </button>
+    </div>
+
+    <!-- Estadísticas Rápidas -->
+    <div class="grid grid-cols-3 gap-2 pt-1">
+      <div class="bg-blue-50/70 border border-blue-100 rounded-2xl p-2.5 text-center">
+        <p class="text-lg font-black text-blue-700" x-text="nonUltraStudies.length"></p>
+        <p class="text-[10px] font-bold text-blue-900/70 uppercase">Estudios</p>
+      </div>
+      <div class="bg-purple-50/70 border border-purple-100 rounded-2xl p-2.5 text-center">
+        <p class="text-lg font-black text-purple-700" x-text="ultrasounds.length"></p>
+        <p class="text-[10px] font-bold text-purple-900/70 uppercase">Ecos</p>
+      </div>
+      <div class="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-2.5 text-center">
+        <p class="text-lg font-black text-emerald-700" x-text="appointments.length"></p>
+        <p class="text-[10px] font-bold text-emerald-900/70 uppercase">Citas</p>
+      </div>
+    </div>
+
+    <!-- Pestañas Internas del Módulo -->
+    <div class="grid grid-cols-3 gap-1.5 bg-gray-100 p-1 rounded-2xl">
+      <button 
+        type="button"
+        @click="activeSubTab = 'estudios'"
+        :class="activeSubTab === 'estudios' ? 'bg-white text-theme-primary shadow-2xs' : 'text-gray-600'"
+        class="py-2 rounded-xl text-xs font-bold transition">
+        🧪 Estudios
+      </button>
+      <button 
+        type="button"
+        @click="activeSubTab = 'ecos'"
+        :class="activeSubTab === 'ecos' ? 'bg-white text-theme-primary shadow-2xs' : 'text-gray-600'"
+        class="py-2 rounded-xl text-xs font-bold transition">
+        🖼️ Ecos
+      </button>
+      <button 
+        type="button"
+        @click="activeSubTab = 'citas'"
+        :class="activeSubTab === 'citas' ? 'bg-white text-theme-primary shadow-2xs' : 'text-gray-600'"
+        class="py-2 rounded-xl text-xs font-bold transition">
+        📅 Citas
+      </button>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- TAB 1: ESTUDIOS CLÍNICOS, RECETAS Y DOCUMENTOS (SOPORTE HÍBRIDO 1:N)   -->
+  <!-- ====================================================================== -->
+  <section x-show="activeSubTab === 'estudios'" class="space-y-3">
+    <div class="flex items-center justify-between gap-2">
+      <!-- Filtros -->
+      <div class="flex items-center space-x-1.5 overflow-x-auto pb-1">
+        <button @click="studyFilter = 'ALL'" :class="studyFilter === 'ALL' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">Todos</button>
+        <button @click="studyFilter = 'LABORATORIO'" :class="studyFilter === 'LABORATORIO' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">🔬 Lab</button>
+        <button @click="studyFilter = 'RECETA'" :class="studyFilter === 'RECETA' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">💊 Receta</button>
+        <button @click="studyFilter = 'DOCUMENTO_CLINICO'" :class="studyFilter === 'DOCUMENTO_CLINICO' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">📁 Docs</button>
+      </div>
+      <button @click="openStudyModal('LABORATORIO')" class="px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow flex-shrink-0">
+        + Subir
+      </button>
+    </div>
+
+    <!-- Lista de Estudios -->
+    <div class="space-y-3">
+      <template x-for="st in filteredNonUltraStudies" :key="st.id">
+        <div class="bg-white rounded-2xl p-4 border border-theme shadow-sm space-y-2.5">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center space-x-1.5 mb-1">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200" x-text="studyTypeLabel(st.studyType)"></span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-primary-light text-theme-primary" x-text="'Sem ' + st.gestationalWeek + ', Día ' + st.gestationalDay"></span>
+              </div>
+              <h4 class="text-sm font-extrabold text-gray-900" x-text="st.title"></h4>
+              <p class="text-[11px] text-gray-400 font-medium" x-text="st.studyDate + ' · Subido por ' + (st.createdBy === 'MAMA' ? 'Mamá' : 'Papá')"></p>
+            </div>
+            <button @click="deleteStudy(st.id)" class="text-xs text-gray-300 hover:text-red-500 p-1" title="Eliminar">🗑️</button>
+          </div>
+
+          <p x-show="st.summaryNotes" class="text-xs text-gray-600 bg-gray-50 rounded-xl p-2.5" x-text="st.summaryNotes"></p>
+
+          <!-- Adjuntos Híbridos (PDFs + Imágenes 1:N) -->
+          <div class="space-y-1.5 pt-1">
+            <div class="flex items-center justify-between">
+              <p class="text-[10px] uppercase font-bold text-gray-400">Archivos Adjuntos (<span x-text="st.attachments.length"></span>)</p>
+              <label class="text-[11px] font-bold text-theme-primary cursor-pointer hover:underline">
+                + Añadir más fotos/PDF
+                <input type="file" accept="image/*,application/pdf" multiple class="hidden" @change="appendAttachments(st.id, $event)">
+              </label>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <template x-for="att in st.attachments" :key="att.id">
+                <button 
+                  type="button"
+                  @click="BabyTrack.openFileViewer(att, st.title, st.attachments)"
+                  class="flex items-center space-x-2.5 p-2 rounded-xl border border-gray-200 bg-gray-50/70 hover:bg-theme-primary-light/50 hover:border-theme-primary transition text-left">
+                  <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden bg-white border border-gray-200">
+                    <template x-if="att.fileCategory === 'IMAGE'">
+                      <img :src="att.url" class="w-full h-full object-cover" alt="Miniatura">
+                    </template>
+                    <template x-if="att.fileCategory === 'PDF'">
+                      <span class="text-lg">📄</span>
+                    </template>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-xs font-bold text-gray-800 truncate" x-text="att.originalFilename"></p>
+                    <p class="text-[10px] text-gray-500" x-text="att.fileCategory + ' · ' + formatBytes(att.fileSizeBytes)"></p>
+                  </div>
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <div x-show="filteredNonUltraStudies.length === 0" class="text-center py-10 bg-white rounded-2xl border border-theme space-y-2">
+        <p class="text-2xl">🧪</p>
+        <p class="text-xs text-gray-500 font-medium">Aún no hay estudios clínicos o recetas guardados.</p>
+        <button @click="openStudyModal('LABORATORIO')" class="text-xs font-bold text-theme-primary underline">Subir el primer estudio o receta</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================== -->
+  <!-- TAB 2: GALERÍA DE ULTRASONIDOS (ECOS)                                  -->
+  <!-- ====================================================================== -->
+  <section x-show="activeSubTab === 'ecos'" x-cloak class="space-y-3">
+    <div class="flex items-center justify-between">
+      <p class="text-xs font-bold text-theme-muted uppercase tracking-wider">Línea de Tiempo de Ecos</p>
+      <button @click="openStudyModal('ULTRASONIDO')" class="px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow">
+        + Nuevo Eco
+      </button>
+    </div>
+
+    <div class="space-y-4">
+      <template x-for="eco in ultrasounds" :key="eco.id">
+        <div class="bg-white rounded-3xl p-4 border border-theme shadow-sm space-y-3">
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200 mb-1">
+                👶 Semana <span x-text="eco.gestationalWeek"></span>, Día <span x-text="eco.gestationalDay"></span>
+              </span>
+              <h4 class="text-base font-extrabold text-gray-900" x-text="eco.title"></h4>
+              <p class="text-xs text-gray-400" x-text="eco.studyDate"></p>
+            </div>
+            <button @click="deleteStudy(eco.id)" class="text-xs text-gray-300 hover:text-red-500 p-1">🗑️</button>
+          </div>
+
+          <p x-show="eco.summaryNotes" class="text-xs text-gray-700 bg-purple-50/40 rounded-xl p-2.5 border border-purple-100" x-text="eco.summaryNotes"></p>
+
+          <!-- Fotos del Ultrasonido en Grid -->
+          <div class="grid grid-cols-2 gap-2" x-show="eco.attachments.some(a => a.fileCategory === 'IMAGE')">
+            <template x-for="att in eco.attachments.filter(a => a.fileCategory === 'IMAGE')" :key="att.id">
+              <button 
+                type="button" 
+                @click="BabyTrack.openFileViewer(att, eco.title, eco.attachments)"
+                class="group relative aspect-square rounded-2xl overflow-hidden border border-gray-200 bg-black">
+                <img :src="att.url" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="Ultrasonido">
+                <span class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px] font-bold">🔍 Ver</span>
+              </button>
+            </template>
+          </div>
+
+          <!-- Reportes PDF del Ultrasonido -->
+          <div class="space-y-1.5" x-show="eco.attachments.some(a => a.fileCategory === 'PDF')">
+            <template x-for="att in eco.attachments.filter(a => a.fileCategory === 'PDF')" :key="att.id">
+              <button 
+                type="button"
+                @click="BabyTrack.openFileViewer(att, eco.title, eco.attachments)"
+                class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 hover:border-theme-primary text-xs font-bold text-gray-800">
+                <span class="flex items-center space-x-2 truncate">
+                  <span>📄</span>
+                  <span class="truncate" x-text="att.originalFilename"></span>
+                </span>
+                <span class="text-theme-primary flex-shrink-0">Abrir PDF →</span>
+              </button>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <div x-show="ultrasounds.length === 0" class="text-center py-10 bg-white rounded-2xl border border-theme space-y-2">
+        <p class="text-2xl">🖼️</p>
+        <p class="text-xs text-gray-500 font-medium">Aún no hay ultrasonidos guardados en la galería.</p>
+        <button @click="openStudyModal('ULTRASONIDO')" class="text-xs font-bold text-theme-primary underline">Subir primer ultrasonido</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================== -->
+  <!-- TAB 3: CITAS MÉDICAS PRENATALES                                        -->
+  <!-- ====================================================================== -->
+  <section x-show="activeSubTab === 'citas'" x-cloak class="space-y-3">
+    <div class="flex items-center justify-between">
+      <p class="text-xs font-bold text-theme-muted uppercase tracking-wider">Agenda y Control de Signos</p>
+      <button @click="openAppointmentModal()" class="px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow">
+        + Nueva Cita
+      </button>
+    </div>
+
+    <div class="space-y-3">
+      <template x-for="appt in appointments" :key="appt.id">
+        <div class="bg-white rounded-2xl p-4 border border-theme shadow-sm space-y-2.5">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center space-x-1.5 mb-1">
+                <span 
+                  :class="appt.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : (appt.status === 'CANCELLED' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-800')"
+                  class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                  x-text="appt.status === 'COMPLETED' ? '✓ Realizada' : (appt.status === 'CANCELLED' ? 'Cancelada' : '🕒 Programada')"></span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-primary-light text-theme-primary" x-text="'Sem ' + appt.gestationalWeek + ', Día ' + appt.gestationalDay"></span>
+              </div>
+              <h4 class="text-sm font-extrabold text-gray-900" x-text="appt.doctorOrClinic"></h4>
+              <p class="text-xs text-gray-500" x-text="formatDateTime(appt.appointmentDate) + ' · ' + (appt.specialty || 'Obstetricia')"></p>
+            </div>
+            <div class="flex space-x-1">
+              <button @click="openEditAppointment(appt)" class="text-xs text-gray-400 hover:text-gray-700 p-1" title="Editar / Registrar vitales">✏️</button>
+              <button @click="deleteAppointment(appt.id)" class="text-xs text-gray-300 hover:text-red-500 p-1" title="Eliminar">🗑️</button>
+            </div>
+          </div>
+
+          <!-- Signos Vitales -->
+          <div class="grid grid-cols-3 gap-2" x-show="appt.momWeightKg || appt.bloodPressure || appt.babyHeartRateBpm">
+            <div class="bg-blue-50/60 rounded-xl p-2 text-center border border-blue-100">
+              <p class="text-[10px] text-blue-700 font-bold">Peso</p>
+              <p class="text-xs font-black text-gray-900" x-text="appt.momWeightKg ? appt.momWeightKg + ' kg' : '—'"></p>
+            </div>
+            <div class="bg-rose-50/60 rounded-xl p-2 text-center border border-rose-100">
+              <p class="text-[10px] text-rose-700 font-bold">Presión</p>
+              <p class="text-xs font-black text-gray-900" x-text="appt.bloodPressure || '—'"></p>
+            </div>
+            <div class="bg-emerald-50/60 rounded-xl p-2 text-center border border-emerald-100">
+              <p class="text-[10px] text-emerald-700 font-bold">FCF Bebé</p>
+              <p class="text-xs font-black text-gray-900" x-text="appt.babyHeartRateBpm ? appt.babyHeartRateBpm + ' lpm' : '—'"></p>
+            </div>
+          </div>
+
+          <div x-show="appt.questionsForDoctor" class="bg-amber-50/60 border border-amber-200 rounded-xl p-2.5 text-xs">
+            <p class="font-bold text-amber-900 text-[11px] mb-0.5">❓ Dudas anotadas para el doctor:</p>
+            <p class="text-gray-700 whitespace-pre-line" x-text="appt.questionsForDoctor"></p>
+          </div>
+
+          <div x-show="appt.doctorNotesAndDiagnosis" class="bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs">
+            <p class="font-bold text-gray-800 text-[11px] mb-0.5">📝 Indicaciones médicas:</p>
+            <p class="text-gray-700 whitespace-pre-line" x-text="appt.doctorNotesAndDiagnosis"></p>
+          </div>
+        </div>
+      </template>
+
+      <div x-show="appointments.length === 0" class="text-center py-10 bg-white rounded-2xl border border-theme space-y-2">
+        <p class="text-2xl">📅</p>
+        <p class="text-xs text-gray-500 font-medium">Aún no has agendado citas médicas prenatales.</p>
+        <button @click="openAppointmentModal()" class="text-xs font-bold text-theme-primary underline">Agendar próxima cita</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL: SUBIR ESTUDIO O ULTRASONIDO CON MÚLTIPLES FOTOS + PDFs (1:N)    -->
+  <!-- ====================================================================== -->
+  <div x-show="showStudyModal" x-cloak class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div @click.outside="showStudyModal = false" class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-sm font-bold text-gray-900">Subir Estudio / Receta / Eco</h3>
+        <button @click="showStudyModal = false" class="text-gray-400 hover:text-gray-600 text-lg">&times;</button>
+      </div>
+
+      <form @submit.prevent="submitStudy" class="space-y-3">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Tipo</label>
+            <select x-model="studyForm.studyType" class="w-full px-2.5 py-2 border rounded-xl text-xs bg-white">
+              <option value="LABORATORIO">🔬 Laboratorio</option>
+              <option value="RECETA">💊 Receta Médica</option>
+              <option value="ULTRASONIDO">👶 Ultrasonido (Eco)</option>
+              <option value="DOCUMENTO_CLINICO">📁 Documento Clínico</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Fecha del estudio</label>
+            <input type="date" x-model="studyForm.studyDate" required class="w-full px-2.5 py-2 border rounded-xl text-xs">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Título descriptivo</label>
+          <input type="text" x-model="studyForm.title" required placeholder="Ej. Biometría Hemática y Receta 1er Trimestre" class="w-full px-3 py-2 border rounded-xl text-sm">
+        </div>
+
+        <div x-show="appointments.length > 0">
+          <label class="block text-xs font-bold text-gray-700 mb-1">Vincular a Cita (Opcional)</label>
+          <select x-model="studyForm.appointmentId" class="w-full px-2.5 py-2 border rounded-xl text-xs bg-white">
+            <option value="">— Sin cita vinculada —</option>
+            <template x-for="a in appointments" :key="a.id">
+              <option :value="a.id" x-text="a.doctorOrClinic + ' (' + formatDateTime(a.appointmentDate) + ')'"></option>
+            </template>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Notas o Resumen (Opcional)</label>
+          <textarea x-model="studyForm.summaryNotes" rows="2" placeholder="Observaciones del resultado..." class="w-full px-3 py-2 border rounded-xl text-xs"></textarea>
+        </div>
+
+        <!-- Selector Híbrido Múltiple (Cámara/Galería + PDFs) -->
+        <div class="bg-theme-primary-light/60 border border-dashed border-theme-primary rounded-2xl p-3 space-y-2">
+          <label class="block text-xs font-bold text-theme-primary">
+            📎 Adjuntar Fotos y/o PDFs (Múltiples archivos)
+          </label>
+          <input 
+            type="file" 
+            x-ref="studyFilesInput"
+            accept="image/*,application/pdf" 
+            multiple 
+            required
+            @change="handleStudyFilesPreview($event)"
+            class="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-theme-primary file:text-white">
+          <p class="text-[10px] text-theme-muted">Puedes seleccionar un PDF de laboratorio y fotos de recetas en el mismo estudio.</p>
+
+          <div x-show="selectedFilesList.length > 0" class="flex flex-wrap gap-1.5 pt-1">
+            <template x-for="(fname, idx) in selectedFilesList" :key="idx">
+              <span class="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-[10px] font-semibold text-gray-700" x-text="fname"></span>
+            </template>
+          </div>
+        </div>
+
+        <div class="flex space-x-2 pt-2">
+          <button type="button" @click="showStudyModal = false" class="w-1/2 py-2 border rounded-xl text-xs font-bold text-gray-600">Cancelar</button>
+          <button type="submit" :disabled="submitting" class="w-1/2 py-2 bg-theme-primary text-white rounded-xl text-xs font-bold disabled:opacity-50">
+            <span x-text="submitting ? 'Subiendo...' : 'Guardar Estudio'"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL: AGENDAR / EDITAR CITA PRENATAL                                  -->
+  <!-- ====================================================================== -->
+  <div x-show="showApptModal" x-cloak class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div @click.outside="showApptModal = false" class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-sm font-bold text-gray-900" x-text="apptForm.id ? 'Actualizar Cita Médica' : 'Agendar Cita Prenatal'"></h3>
+        <button @click="showApptModal = false" class="text-gray-400 hover:text-gray-600 text-lg">&times;</button>
+      </div>
+
+      <form @submit.prevent="submitAppointment" class="space-y-3">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Fecha y Hora</label>
+            <input type="datetime-local" x-model="apptForm.appointmentDate" required class="w-full px-2.5 py-2 border rounded-xl text-xs">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Estado</label>
+            <select x-model="apptForm.status" class="w-full px-2.5 py-2 border rounded-xl text-xs bg-white">
+              <option value="SCHEDULED">🕒 Programada</option>
+              <option value="COMPLETED">✓ Realizada</option>
+              <option value="CANCELLED">Cancelada</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Médico o Clínica</label>
+          <input type="text" x-model="apptForm.doctorOrClinic" required placeholder="Ej. Dra. García · Hospital Ángeles" class="w-full px-3 py-2 border rounded-xl text-sm">
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-[11px] font-bold text-gray-700 mb-1">Peso (kg)</label>
+            <input type="number" step="0.1" x-model="apptForm.momWeightKg" placeholder="62.5" class="w-full px-2.5 py-1.5 border rounded-xl text-xs">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-700 mb-1">Presión</label>
+            <input type="text" x-model="apptForm.bloodPressure" placeholder="110/70" class="w-full px-2.5 py-1.5 border rounded-xl text-xs">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-700 mb-1">FCF (lpm)</label>
+            <input type="number" x-model="apptForm.babyHeartRateBpm" placeholder="155" class="w-full px-2.5 py-1.5 border rounded-xl text-xs">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Preguntas para el doctor</label>
+          <textarea x-model="apptForm.questionsForDoctor" rows="2" placeholder="Anota tus dudas de la semana..." class="w-full px-3 py-2 border rounded-xl text-xs"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Diagnóstico / Indicaciones</label>
+          <textarea x-model="apptForm.doctorNotesAndDiagnosis" rows="2" placeholder="Indicaciones después de la consulta..." class="w-full px-3 py-2 border rounded-xl text-xs"></textarea>
+        </div>
+
+        <div class="flex space-x-2 pt-2">
+          <button type="button" @click="showApptModal = false" class="w-1/2 py-2 border rounded-xl text-xs font-bold text-gray-600">Cancelar</button>
+          <button type="submit" :disabled="submitting" class="w-1/2 py-2 bg-theme-primary text-white rounded-xl text-xs font-bold">Guardar Cita</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function medicalApp() {
+  return {
+    activeSubTab: 'estudios',
+    studyFilter: 'ALL',
+    studies: {{ studies_json | safe }},
+    appointments: {{ appointments_json | safe }},
+    showStudyModal: false,
+    showApptModal: false,
+    submitting: false,
+    selectedFilesList: [],
+    studyForm: {
+      studyType: 'LABORATORIO',
+      title: '',
+      studyDate: '{{ today_iso }}',
+      appointmentId: '',
+      summaryNotes: ''
+    },
+    apptForm: {
+      id: null,
+      appointmentDate: '',
+      doctorOrClinic: '',
+      status: 'SCHEDULED',
+      momWeightKg: '',
+      bloodPressure: '',
+      babyHeartRateBpm: '',
+      questionsForDoctor: '',
+      doctorNotesAndDiagnosis: ''
+    },
+    init() {
+      const hash = window.location.hash;
+      if (hash === '#ecos') this.activeSubTab = 'ecos';
+      else if (hash === '#citas') this.activeSubTab = 'citas';
+    },
+    get nonUltraStudies() {
+      return this.studies.filter(s => s.studyType !== 'ULTRASONIDO');
+    },
+    get filteredNonUltraStudies() {
+      if (this.studyFilter === 'ALL') return this.nonUltraStudies;
+      return this.nonUltraStudies.filter(s => s.studyType === this.studyFilter);
+    },
+    get ultrasounds() {
+      return this.studies.filter(s => s.studyType === 'ULTRASONIDO');
+    },
+    studyTypeLabel(t) {
+      const map = {
+        LABORATORIO: '🔬 Laboratorio',
+        RECETA: '💊 Receta',
+        DOCUMENTO_CLINICO: '📁 Doc. Clínico',
+        ULTRASONIDO: '👶 Ultrasonido'
+      };
+      return map[t] || t;
+    },
+    formatBytes(bytes) {
+      if (!bytes) return '0 KB';
+      if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    },
+    formatDateTime(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    },
+    openStudyModal(defaultType) {
+      this.studyForm = {
+        studyType: defaultType || 'LABORATORIO',
+        title: '',
+        studyDate: '{{ today_iso }}',
+        appointmentId: '',
+        summaryNotes: ''
+      };
+      this.selectedFilesList = [];
+      if (this.$refs.studyFilesInput) this.$refs.studyFilesInput.value = '';
+      this.showStudyModal = true;
+    },
+    handleStudyFilesPreview(e) {
+      this.selectedFilesList = Array.from(e.target.files || []).map(f => f.name);
+    },
+    async refreshMedicalData() {
+      const [sRes, aRes] = await Promise.all([
+        fetch('/api/v1/medical/studies'),
+        fetch('/api/v1/medical/appointments')
+      ]);
+      this.studies = await sRes.json();
+      this.appointments = await aRes.json();
+    },
+    async submitStudy() {
+      const input = this.$refs.studyFilesInput;
+      if (!input || !input.files || input.files.length === 0) {
+        alert('Selecciona al menos una foto o PDF.');
+        return;
+      }
+      this.submitting = true;
+      try {
+        const fd = new FormData();
+        fd.append('studyType', this.studyForm.studyType);
+        fd.append('title', this.studyForm.title);
+        fd.append('studyDate', this.studyForm.studyDate);
+        fd.append('createdBy', BabyTrack.getActiveParent());
+        if (this.studyForm.summaryNotes) fd.append('summaryNotes', this.studyForm.summaryNotes);
+        if (this.studyForm.appointmentId) fd.append('appointmentId', this.studyForm.appointmentId);
+        for (const file of input.files) {
+          fd.append('files', file);
+        }
+
+        const res = await fetch('/api/v1/medical/studies', { method: 'POST', body: fd });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Error al subir estudio');
+        }
+        this.showStudyModal = false;
+        if (this.studyForm.studyType === 'ULTRASONIDO') this.activeSubTab = 'ecos';
+        else this.activeSubTab = 'estudios';
+        await this.refreshMedicalData();
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        this.submitting = false;
+      }
+    },
+    async appendAttachments(studyId, event) {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+      const fd = new FormData();
+      for (const f of files) fd.append('files', f);
+      const res = await fetch(`/api/v1/medical/studies/${studyId}/attachments`, { method: 'POST', body: fd });
+      event.target.value = '';
+      if (res.ok) {
+        await this.refreshMedicalData();
+      } else {
+        const err = await res.json();
+        alert(err.detail || 'Error al adjuntar archivo');
+      }
+    },
+    async deleteStudy(id) {
+      if (!confirm('¿Eliminar este estudio y todos sus archivos?')) return;
+      const res = await fetch(`/api/v1/medical/studies/${id}`, { method: 'DELETE' });
+      if (res.ok) await this.refreshMedicalData();
+    },
+    openAppointmentModal() {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      this.apptForm = {
+        id: null,
+        appointmentDate: now.toISOString().slice(0, 16),
+        doctorOrClinic: '',
+        status: 'SCHEDULED',
+        momWeightKg: '',
+        bloodPressure: '',
+        babyHeartRateBpm: '',
+        questionsForDoctor: '',
+        doctorNotesAndDiagnosis: ''
+      };
+      this.showApptModal = true;
+    },
+    openEditAppointment(appt) {
+      this.apptForm = {
+        id: appt.id,
+        appointmentDate: (appt.appointmentDate || '').slice(0, 16),
+        doctorOrClinic: appt.doctorOrClinic,
+        status: appt.status,
+        momWeightKg: appt.momWeightKg ?? '',
+        bloodPressure: appt.bloodPressure || '',
+        babyHeartRateBpm: appt.babyHeartRateBpm ?? '',
+        questionsForDoctor: appt.questionsForDoctor || '',
+        doctorNotesAndDiagnosis: appt.doctorNotesAndDiagnosis || ''
+      };
+      this.showApptModal = true;
+    },
+    async submitAppointment() {
+      this.submitting = true;
+      try {
+        const payload = {
+          appointmentDate: this.apptForm.appointmentDate,
+          doctorOrClinic: this.apptForm.doctorOrClinic,
+          status: this.apptForm.status,
+          momWeightKg: this.apptForm.momWeightKg !== '' ? parseFloat(this.apptForm.momWeightKg) : null,
+          bloodPressure: this.apptForm.bloodPressure || null,
+          babyHeartRateBpm: this.apptForm.babyHeartRateBpm !== '' ? parseInt(this.apptForm.babyHeartRateBpm, 10) : null,
+          questionsForDoctor: this.apptForm.questionsForDoctor || null,
+          doctorNotesAndDiagnosis: this.apptForm.doctorNotesAndDiagnosis || null
+        };
+        const url = this.apptForm.id ? `/api/v1/medical/appointments/${this.apptForm.id}` : '/api/v1/medical/appointments';
+        const method = this.apptForm.id ? 'PUT' : 'POST';
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Error al guardar cita');
+        }
+        this.showApptModal = false;
+        await this.refreshMedicalData();
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        this.submitting = false;
+      }
+    },
+    async deleteAppointment(id) {
+      if (!confirm('¿Eliminar esta cita médica?')) return;
+      const res = await fetch(`/api/v1/medical/appointments/${id}`, { method: 'DELETE' });
+      if (res.ok) await this.refreshMedicalData();
+    }
+  };
+}
+</script>
+{% endblock %}

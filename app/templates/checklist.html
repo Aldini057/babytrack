@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div x-data="checklistApp()" x-init="init()" class="space-y-4">
+
+  <!-- Tarjeta Resumen de Avance y Presupuesto -->
+  <div class="bg-white rounded-3xl p-5 border border-theme shadow-theme space-y-3">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-[11px] uppercase tracking-wider font-bold text-theme-muted">Preparativos del Bebé</p>
+        <h2 class="text-lg font-extrabold text-gray-900">Checklist & Presupuesto</h2>
+      </div>
+      <button 
+        @click="showAddModal = true"
+        class="px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:opacity-90 transition">
+        + Nuevo
+      </button>
+    </div>
+
+    <!-- Barra Global -->
+    <div class="space-y-1.5">
+      <div class="flex justify-between text-xs font-semibold">
+        <span class="text-theme-muted">
+          <span class="font-bold text-gray-900" x-text="summary.completedItems"></span> de <span x-text="summary.totalItems"></span> artículos listos
+        </span>
+        <span class="text-theme-primary font-bold" x-text="summary.progressPercent + '%'"></span>
+      </div>
+      <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden border border-gray-200">
+        <div class="bg-theme-primary h-full rounded-full transition-all duration-500" :style="'width: ' + summary.progressPercent + '%'"></div>
+      </div>
+    </div>
+
+    <!-- Presupuesto Estimado vs Real -->
+    <div class="grid grid-cols-2 gap-2 pt-1">
+      <div class="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+        <p class="text-[10px] uppercase font-bold text-gray-500">Presupuesto Estimado</p>
+        <p class="text-sm font-black text-gray-800" x-text="formatMxn(summary.totalEstimatedCostMxn)"></p>
+      </div>
+      <div class="bg-theme-primary-light rounded-2xl p-3 border border-theme-primary/20">
+        <p class="text-[10px] uppercase font-bold text-theme-primary">Total Gastado Real</p>
+        <p class="text-sm font-black text-theme-primary" x-text="formatMxn(summary.totalActualCostMxn)"></p>
+      </div>
+    </div>
+
+    <!-- Mini barras por trimestre -->
+    <div class="grid grid-cols-3 gap-2 pt-1">
+      <template x-for="tri in summary.byTrimester" :key="tri.trimester">
+        <button 
+          type="button"
+          @click="selectedTrimester = (selectedTrimester === tri.trimester ? null : tri.trimester)"
+          :class="selectedTrimester === tri.trimester ? 'ring-2 ring-offset-1 ring-emerald-500 bg-emerald-50/70' : 'bg-gray-50'"
+          class="rounded-xl p-2 border border-gray-200 text-left transition">
+          <div class="flex justify-between items-center text-[10px] font-bold">
+            <span x-text="'Trim. ' + tri.trimester"></span>
+            <span class="text-theme-primary" x-text="tri.completedItems + '/' + tri.totalItems"></span>
+          </div>
+          <div class="w-full bg-gray-200 h-1.5 rounded-full mt-1 overflow-hidden">
+            <div class="bg-theme-primary h-full" :style="'width: ' + tri.progressPercent + '%'"></div>
+          </div>
+        </button>
+      </template>
+    </div>
+  </div>
+
+  <!-- Filtros por Categoría -->
+  <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 no-scrollbar">
+    <button 
+      @click="selectedCategory = 'ALL'"
+      :class="selectedCategory === 'ALL' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'"
+      class="px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap transition">
+      Todas
+    </button>
+    <template x-for="cat in categories" :key="cat.key">
+      <button 
+        @click="selectedCategory = cat.key"
+        :class="selectedCategory === cat.key ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'"
+        class="px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap transition flex items-center space-x-1">
+        <span x-text="cat.icon"></span>
+        <span x-text="cat.label"></span>
+      </button>
+    </template>
+  </div>
+
+  <!-- Lista de Artículos -->
+  <div class="space-y-2.5">
+    <template x-for="item in filteredItems" :key="item.id">
+      <div 
+        :class="item.isCompleted ? 'bg-white/70 opacity-85' : 'bg-white'"
+        class="rounded-2xl p-3.5 border border-theme shadow-2xs transition flex items-start space-x-3">
+        
+        <!-- Checkbox Toggle -->
+        <button 
+          type="button"
+          @click="toggleItem(item)"
+          :class="item.isCompleted ? 'bg-theme-primary border-transparent text-white' : 'bg-white border-gray-300 text-transparent hover:border-gray-400'"
+          class="mt-0.5 w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </button>
+
+        <!-- Contenido -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-start justify-between gap-2">
+            <h4 
+              :class="item.isCompleted ? 'line-through text-gray-400' : 'text-gray-900'"
+              class="text-sm font-bold leading-snug" 
+              x-text="item.itemName"></h4>
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0" x-text="'T' + item.trimesterPriority"></span>
+          </div>
+
+          <p class="text-xs text-gray-500 mt-0.5" x-show="item.description" x-text="item.description"></p>
+
+          <div class="flex flex-wrap items-center gap-2 mt-2 text-[11px]">
+            <span class="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 font-semibold" x-text="categoryLabel(item.category)"></span>
+            <span class="text-gray-500 font-medium">
+              Est: <strong x-text="formatMxn(item.estimatedCostMxn)"></strong>
+            </span>
+            <span class="text-theme-primary font-semibold" x-show="item.actualCostMxn > 0">
+              Real: <strong x-text="formatMxn(item.actualCostMxn)"></strong>
+            </span>
+            <span 
+              x-show="item.isCompleted && item.completedBy"
+              :class="item.completedBy === 'MAMA' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'"
+              class="px-2 py-0.5 rounded-full border font-bold text-[10px]"
+              x-text="item.completedBy === 'MAMA' ? '✓ Mamá' : '✓ Papá'"></span>
+          </div>
+        </div>
+
+        <!-- Botón Editar Costo / Eliminar -->
+        <div class="flex flex-col space-y-1">
+          <button @click="openEditCost(item)" title="Editar costo" class="text-xs text-gray-400 hover:text-gray-700 p-1">✏️</button>
+          <button @click="deleteItem(item.id)" title="Eliminar" class="text-xs text-gray-300 hover:text-red-500 p-1">🗑️</button>
+        </div>
+      </div>
+    </template>
+
+    <div x-show="filteredItems.length === 0" class="text-center py-8 text-xs text-gray-500 bg-white rounded-2xl border border-theme">
+      No hay artículos en este filtro.
+    </div>
+  </div>
+
+  <!-- Modal Nuevo Artículo -->
+  <div x-show="showAddModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div @click.outside="showAddModal = false" class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-3">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-sm font-bold text-gray-900">Agregar Artículo al Checklist</h3>
+        <button @click="showAddModal = false" class="text-gray-400 hover:text-gray-600">&times;</button>
+      </div>
+      <form @submit.prevent="createItem" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Nombre del Artículo</label>
+          <input type="text" x-model="newItem.itemName" required placeholder="Ej. Silla alta para comer" class="w-full px-3 py-2 border rounded-xl text-sm">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Categoría</label>
+            <select x-model="newItem.category" class="w-full px-2 py-2 border rounded-xl text-xs bg-white">
+              <template x-for="cat in categories" :key="cat.key">
+                <option :value="cat.key" x-text="cat.label"></option>
+              </template>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Trimestre</label>
+            <select x-model.number="newItem.trimesterPriority" class="w-full px-2 py-2 border rounded-xl text-xs bg-white">
+              <option value="1">1er Trimestre</option>
+              <option value="2">2do Trimestre</option>
+              <option value="3">3er Trimestre</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Costo Estimado (MXN)</label>
+            <input type="number" step="0.01" min="0" x-model.number="newItem.estimatedCostMxn" class="w-full px-3 py-2 border rounded-xl text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Cantidad</label>
+            <input type="number" min="1" x-model.number="newItem.quantity" class="w-full px-3 py-2 border rounded-xl text-sm">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Notas / Descripción</label>
+          <input type="text" x-model="newItem.description" placeholder="Opcional..." class="w-full px-3 py-2 border rounded-xl text-sm">
+        </div>
+        <div class="flex space-x-2 pt-2">
+          <button type="button" @click="showAddModal = false" class="w-1/2 py-2 border rounded-xl text-xs font-bold text-gray-600">Cancelar</button>
+          <button type="submit" class="w-1/2 py-2 bg-theme-primary text-white rounded-xl text-xs font-bold">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Editar Costo Real -->
+  <div x-show="editingItem !== null" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div @click.outside="editingItem = null" class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-3" x-if="editingItem">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-sm font-bold text-gray-900">Actualizar Costo</h3>
+        <button @click="editingItem = null" class="text-gray-400">&times;</button>
+      </div>
+      <p class="text-xs font-semibold text-gray-700" x-text="editingItem.itemName"></p>
+      <form @submit.prevent="saveEditCost" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Costo Estimado (MXN)</label>
+          <input type="number" step="0.01" min="0" x-model.number="editingItem.estimatedCostMxn" class="w-full px-3 py-2 border rounded-xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Costo Real Pagado (MXN)</label>
+          <input type="number" step="0.01" min="0" x-model.number="editingItem.actualCostMxn" class="w-full px-3 py-2 border rounded-xl text-sm">
+        </div>
+        <div class="flex space-x-2 pt-2">
+          <button type="button" @click="editingItem = null" class="w-1/2 py-2 border rounded-xl text-xs font-bold text-gray-600">Cancelar</button>
+          <button type="submit" class="w-1/2 py-2 bg-theme-primary text-white rounded-xl text-xs font-bold">Actualizar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function checklistApp() {
+  return {
+    items: {{ items_json | safe }},
+    summary: {{ summary_json | safe }},
+    selectedCategory: 'ALL',
+    selectedTrimester: null,
+    showAddModal: false,
+    editingItem: null,
+    categories: [
+      { key: 'HABITACION', label: 'Habitación', icon: '🛏️' },
+      { key: 'TRANSPORTE', label: 'Transporte', icon: '🚼' },
+      { key: 'ALIMENTACION', label: 'Alimentación', icon: '🍼' },
+      { key: 'HIGIENE', label: 'Higiene', icon: '🛁' },
+      { key: 'ROPA', label: 'Ropa', icon: '👕' },
+      { key: 'HOSPITAL', label: 'Hospital', icon: '🏥' }
+    ],
+    newItem: {
+      category: 'HABITACION',
+      itemName: '',
+      description: '',
+      trimesterPriority: 1,
+      quantity: 1,
+      estimatedCostMxn: 0
+    },
+    init() {},
+    get filteredItems() {
+      return this.items.filter(item => {
+        if (this.selectedCategory !== 'ALL' && item.category !== this.selectedCategory) return false;
+        if (this.selectedTrimester !== null && item.trimesterPriority !== this.selectedTrimester) return false;
+        return true;
+      });
+    },
+    categoryLabel(key) {
+      const found = this.categories.find(c => c.key === key);
+      return found ? `${found.icon} ${found.label}` : key;
+    },
+    formatMxn(val) {
+      return '$' + Number(val || 0).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    },
+    async refreshData() {
+      const [itemsRes, sumRes] = await Promise.all([
+        fetch('/api/v1/checklist'),
+        fetch('/api/v1/checklist/summary')
+      ]);
+      this.items = await itemsRes.json();
+      this.summary = await sumRes.json();
+    },
+    async toggleItem(item) {
+      const who = BabyTrack.getActiveParent();
+      const res = await fetch(`/api/v1/checklist/${item.id}/toggle`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completedBy: who })
+      });
+      if (res.ok) {
+        await this.refreshData();
+      }
+    },
+    async createItem() {
+      const res = await fetch('/api/v1/checklist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(this.newItem)
+      });
+      if (res.ok) {
+        this.showAddModal = false;
+        this.newItem = { category: 'HABITACION', itemName: '', description: '', trimesterPriority: 1, quantity: 1, estimatedCostMxn: 0 };
+        await this.refreshData();
+      }
+    },
+    openEditCost(item) {
+      this.editingItem = { ...item };
+    },
+    async saveEditCost() {
+      const res = await fetch(`/api/v1/checklist/${this.editingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          estimatedCostMxn: this.editingItem.estimatedCostMxn,
+          actualCostMxn: this.editingItem.actualCostMxn
+        })
+      });
+      if (res.ok) {
+        this.editingItem = null;
+        await this.refreshData();
+      }
+    },
+    async deleteItem(id) {
+      if (!confirm('¿Eliminar este artículo de la checklist?')) return;
+      const res = await fetch(`/api/v1/checklist/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await this.refreshData();
+      }
+    }
+  };
+}
+</script>
+{% endblock %}

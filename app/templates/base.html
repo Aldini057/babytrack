@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="{{ settings.gender_mode }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BabyTrack - {{ settings.baby_nickname }}</title>
+
+  <!-- PWA Meta & Manifest -->
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#5F8D75">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="BabyTrack">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
+
+  <!-- Tailwind CSS & Temas -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/css/themes.css">
+
+  <!-- Canvas Confetti & Alpine.js -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="/static/js/app.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body 
+  x-data="{ activeParent: BabyTrack.getActiveParent(), pinUnlocked: {{ 'true' if auth_status.authenticated else 'false' }} }"
+  @parent-changed.window="activeParent = $event.detail"
+  @auth-updated.window="pinUnlocked = $event.detail.authenticated"
+  class="theme-transition min-h-screen flex flex-col antialiased selection:bg-pink-100 selection:text-pink-900">
+
+  <!-- Encabezado Superior Mobile -->
+  <header class="sticky top-0 z-30 bg-theme-surface/85 backdrop-blur-md border-b border-theme px-4 py-3">
+    <div class="max-w-lg mx-auto flex items-center justify-between gap-2">
+      <a href="/" class="flex items-center space-x-2 min-w-0">
+        <span class="text-2xl">🍼</span>
+        <div class="truncate">
+          <h1 class="text-base font-bold tracking-tight text-theme-primary leading-tight">BabyTrack</h1>
+          <p class="text-xs text-theme-muted font-medium truncate">{{ settings.baby_nickname }}</p>
+        </div>
+      </a>
+
+      <div class="flex items-center space-x-1.5 flex-shrink-0">
+        <!-- Botón de Seguridad Familiar (PIN) -->
+        <button 
+          type="button"
+          onclick="BabyTrack.openPinModal()"
+          title="Seguridad Familiar PIN"
+          :class="pinUnlocked ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white/90 text-gray-600 border-theme'"
+          class="px-2 py-1 rounded-full border text-[11px] font-bold transition shadow-2xs">
+          <span x-text="pinUnlocked ? '🔓 PIN' : '🔒 PIN'"></span>
+        </button>
+
+        <!-- Botón de un toque a Modo Consulta Médica -->
+        <button 
+          type="button"
+          onclick="BabyTrack.openConsultationMode()"
+          title="Modo Consulta Médica"
+          class="px-2.5 py-1 rounded-full bg-white/90 border border-theme text-[11px] font-bold text-theme-primary hover:bg-theme-primary-light transition shadow-2xs">
+          🩺 Consulta
+        </button>
+
+        <!-- Selector Rápido de Perfil Activo (Mamá / Papá) -->
+        <div class="inline-flex rounded-full bg-white/90 border border-theme p-0.5 text-[11px] font-bold shadow-2xs">
+          <button 
+            type="button"
+            @click="BabyTrack.setActiveParent('MAMA')"
+            :class="activeParent === 'MAMA' ? 'bg-rose-500 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'"
+            class="px-2 py-1 rounded-full transition">
+            👩 Mamá
+          </button>
+          <button 
+            type="button"
+            @click="BabyTrack.setActiveParent('PAPA')"
+            :class="activeParent === 'PAPA' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800'"
+            class="px-2 py-1 rounded-full transition">
+            👨 Papá
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal (Mobile-First) -->
+  <main class="flex-1 max-w-lg w-full mx-auto px-4 py-5 space-y-5 pb-24">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Barra de Navegación Inferior Móvil (5 Módulos Completos) -->
+  <nav class="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-theme shadow-lg">
+    <div class="max-w-lg mx-auto flex items-center justify-around py-2 px-2 text-xs">
+      <a href="/" class="flex flex-col items-center py-1 px-3 transition {% if active_tab == 'inicio' %}text-theme-primary font-bold{% else %}text-theme-muted opacity-65 hover:opacity-100{% endif %}">
+        <span class="text-lg">👶</span>
+        <span>Inicio</span>
+      </a>
+      <a href="/checklist" class="flex flex-col items-center py-1 px-3 transition {% if active_tab == 'checklist' %}text-theme-primary font-bold{% else %}text-theme-muted opacity-65 hover:opacity-100{% endif %}">
+        <span class="text-lg">🛒</span>
+        <span>Compras</span>
+      </a>
+      <a href="/medical" class="flex flex-col items-center py-1 px-3 transition {% if active_tab == 'medical' %}text-theme-primary font-bold{% else %}text-theme-muted opacity-65 hover:opacity-100{% endif %}">
+        <span class="text-lg">🩺</span>
+        <span>Médico</span>
+      </a>
+      <a href="/journal" class="flex flex-col items-center py-1 px-3 transition {% if active_tab == 'journal' %}text-theme-primary font-bold{% else %}text-theme-muted opacity-65 hover:opacity-100{% endif %}">
+        <span class="text-lg">📖</span>
+        <span>Diario</span>
+      </a>
+      <a href="/moments" class="flex flex-col items-center py-1 px-3 transition {% if active_tab == 'moments' %}text-theme-primary font-bold{% else %}text-theme-muted opacity-65 hover:opacity-100{% endif %}">
+        <span class="text-lg">📸</span>
+        <span>Momentos</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Modales Globales (PIN Familiar + Modo Consulta Médica + Visor Híbrido Fotos/PDF) -->
+  {% include "components/pin_auth_modal.html" %}
+  {% include "components/medical_mode_drawer.html" %}
+  {% include "components/modal_file_viewer.html" %}
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <!-- Componente Hero: Contador Obstétrico y Tema Dinámico -->
+  {% include "components/hero_counter.html" %}
+
+  <!-- Botón de Un Toque: Modo Consulta Médica -->
+  <button 
+    type="button"
+    onclick="BabyTrack.openConsultationMode()"
+    class="w-full bg-theme-primary text-white rounded-2xl p-4 shadow-theme flex items-center justify-between hover:opacity-95 transition">
+    <div class="flex items-center space-x-3 text-left">
+      <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl">
+        🩺
+      </div>
+      <div>
+        <h3 class="text-sm font-extrabold leading-tight">Modo Consulta Médica</h3>
+        <p class="text-[11px] opacity-90">Resumen en 1 toque frente al ginecólogo: vitales, dudas y últimos estudios</p>
+      </div>
+    </div>
+    <span class="text-xs font-bold bg-white/20 px-2.5 py-1 rounded-full flex-shrink-0">Abrir →</span>
+  </button>
+
+  <!-- Accesos Rápidos a los 5 Módulos Activos -->
+  <section class="space-y-3 pt-1">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xs font-bold uppercase tracking-wider text-theme-muted">Módulos de BabyTrack</h2>
+      <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+        5/5 Módulos Activos
+      </span>
+    </div>
+
+    <!-- Módulo 3: Control Médico, Estudios y Ecos -->
+    <a href="/medical" class="block bg-white rounded-2xl p-4 border border-theme shadow-sm hover:shadow-md transition flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-11 h-11 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-xl">
+          🩺
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-gray-900">Control Médico, Estudios y Ecos</h3>
+          <p class="text-xs text-gray-500">
+            {{ medical_stats.studies_count }} estudios · {{ medical_stats.ultrasounds_count }} ecos · {{ medical_stats.appointments_count }} citas
+          </p>
+        </div>
+      </div>
+      <span class="text-xs font-bold text-theme-primary bg-theme-primary-light px-2.5 py-1 rounded-full">
+        Abrir →
+      </span>
+    </a>
+
+    <!-- Módulo 2: Checklist -->
+    <a href="/checklist" class="block bg-white rounded-2xl p-4 border border-theme shadow-sm hover:shadow-md transition flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-11 h-11 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-xl">
+          🛒
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-gray-900">Checklist & Presupuesto del Bebé</h3>
+          <p class="text-xs text-gray-500">
+            {{ checklist_summary.completedItems }} de {{ checklist_summary.totalItems }} listos ({{ checklist_summary.progressPercent }}%) · Gastado ${{ "%.0f"|format(checklist_summary.totalActualCostMxn) }} MXN
+          </p>
+        </div>
+      </div>
+      <span class="text-xs font-bold text-theme-primary bg-theme-primary-light px-2.5 py-1 rounded-full">
+        Abrir →
+      </span>
+    </a>
+
+    <!-- Módulo 4: Álbum de Momentos y Bóveda de Documentos -->
+    <a href="/moments" class="block bg-white rounded-2xl p-4 border border-theme shadow-sm hover:shadow-md transition flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-11 h-11 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-xl">
+          📸
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-gray-900">Álbum de Momentos y Bóveda Clínica</h3>
+          <p class="text-xs text-gray-500">
+            {{ media_stats.moments_count }} fotos de evolución · {{ media_stats.vault_count }} documentos en bóveda
+          </p>
+        </div>
+      </div>
+      <span class="text-xs font-bold text-theme-primary bg-theme-primary-light px-2.5 py-1 rounded-full">
+        Abrir →
+      </span>
+    </a>
+
+    <!-- Módulo 5: Diario de Cartas -->
+    <a href="/journal" class="block bg-white rounded-2xl p-4 border border-theme shadow-sm hover:shadow-md transition flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-11 h-11 rounded-xl bg-pink-50 border border-pink-200 flex items-center justify-center text-xl">
+          💌
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-gray-900">Diario del Bebé (Mamá y Papá)</h3>
+          <p class="text-xs text-gray-500">
+            {{ journal_count }} {% if journal_count == 1 %}carta escrita{% else %}cartas escritas{% endif %} con semana automática
+          </p>
+        </div>
+      </div>
+      <span class="text-xs font-bold text-theme-primary bg-theme-primary-light px-2.5 py-1 rounded-full">
+        Escribir →
+      </span>
+    </a>
+  </section>
+{% endblock %}

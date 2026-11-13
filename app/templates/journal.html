@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div x-data="journalApp()" x-init="init()" class="space-y-4">
+
+  <!-- Encabezado y Botón Escribir -->
+  <div class="bg-white rounded-3xl p-5 border border-theme shadow-theme space-y-3">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-[11px] uppercase tracking-wider font-bold text-theme-muted">Cápsula del Tiempo</p>
+        <h2 class="text-lg font-extrabold text-gray-900">Diario para el Bebé</h2>
+      </div>
+      <button 
+        @click="showComposer = !showComposer"
+        class="px-3.5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:opacity-90 transition">
+        <span x-text="showComposer ? 'Cerrar' : '✍️ Escribir Carta'"></span>
+      </button>
+    </div>
+    <p class="text-xs text-theme-muted">
+      Cada pensamiento queda etiquetado automáticamente en la <strong class="text-theme-primary">Semana {{ metrics.weeks }}, Día {{ metrics.days }}</strong> rumbo al 07/07/2027.
+    </p>
+
+    <!-- Formulario para Nueva Carta -->
+    <form x-show="showComposer" x-cloak @submit.prevent="submitNote" class="pt-3 border-t border-gray-100 space-y-3">
+      <div>
+        <label class="block text-xs font-bold text-gray-700 mb-1.5">¿Quién escribe esta carta?</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button 
+            type="button" 
+            @click="authorRole = 'MAMA'"
+            :class="authorRole === 'MAMA' ? 'bg-rose-500 text-white border-rose-600 shadow-sm' : 'bg-rose-50/50 text-rose-700 border-rose-200'"
+            class="py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center space-x-1.5">
+            <span>👩</span>
+            <span>Escrito por Mamá</span>
+          </button>
+          <button 
+            type="button" 
+            @click="authorRole = 'PAPA'"
+            :class="authorRole === 'PAPA' ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm' : 'bg-indigo-50/50 text-indigo-700 border-indigo-200'"
+            class="py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center space-x-1.5">
+            <span>👨</span>
+            <span>Escrito por Papá</span>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-gray-700 mb-1">Título de la nota o carta</label>
+        <input type="text" x-model="title" required placeholder="Ej. Cuando escuchamos tu latido por primera vez" class="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-gray-700 mb-1">Mensaje para el bebé</label>
+        <textarea x-model="content" rows="4" required placeholder="Escribe lo que sientes hoy..." class="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-gray-700 mb-1">Foto opcional del recuerdo</label>
+        <input type="file" x-ref="photoInput" accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-theme-primary-light file:text-theme-primary hover:file:opacity-90">
+      </div>
+
+      <button type="submit" :disabled="submitting" class="w-full py-2.5 bg-theme-primary text-white rounded-xl text-xs font-bold shadow hover:opacity-95 disabled:opacity-50">
+        <span x-text="submitting ? 'Guardando recuerdo...' : '💌 Guardar en el Diario'"></span>
+      </button>
+    </form>
+  </div>
+
+  <!-- Filtros por Autor -->
+  <div class="flex items-center space-x-2">
+    <button 
+      @click="filterAuthor('ALL')"
+      :class="authorFilter === 'ALL' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'"
+      class="px-3.5 py-1.5 rounded-full text-xs font-bold border transition">
+      Todas (<span x-text="notes.length"></span>)
+    </button>
+    <button 
+      @click="filterAuthor('MAMA')"
+      :class="authorFilter === 'MAMA' ? 'bg-rose-500 text-white border-transparent' : 'bg-white text-rose-700 border-rose-200'"
+      class="px-3.5 py-1.5 rounded-full text-xs font-bold border transition">
+      👩 Solo Mamá
+    </button>
+    <button 
+      @click="filterAuthor('PAPA')"
+      :class="authorFilter === 'PAPA' ? 'bg-indigo-600 text-white border-transparent' : 'bg-white text-indigo-700 border-indigo-200'"
+      class="px-3.5 py-1.5 rounded-full text-xs font-bold border transition">
+      👨 Solo Papá
+    </button>
+  </div>
+
+  <!-- Muro de Cartas -->
+  <div class="space-y-3">
+    <template x-for="note in filteredNotes" :key="note.id">
+      <article 
+        :class="note.authorRole === 'MAMA' ? 'border-l-4 border-l-rose-400 bg-gradient-to-br from-white to-rose-50/40' : 'border-l-4 border-l-indigo-500 bg-gradient-to-br from-white to-indigo-50/40'"
+        class="rounded-2xl p-4 border border-theme shadow-sm space-y-2.5">
+        
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center space-x-2">
+            <span 
+              :class="note.authorRole === 'MAMA' ? 'bg-rose-100 text-rose-800 border-rose-200' : 'bg-indigo-100 text-indigo-800 border-indigo-200'"
+              class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border">
+              <span x-text="note.authorRole === 'MAMA' ? '👩 Escrito por Mamá' : '👨 Escrito por Papá'"></span>
+            </span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-primary-light text-theme-primary">
+              Semana <span x-text="note.gestationalWeek"></span>, Día <span x-text="note.gestationalDay"></span>
+            </span>
+          </div>
+          <button @click="deleteNote(note.id)" class="text-xs text-gray-300 hover:text-red-500 p-1" title="Eliminar">🗑️</button>
+        </div>
+
+        <h3 class="text-base font-extrabold text-gray-900 leading-snug" x-text="note.title"></h3>
+        <p class="text-sm text-gray-700 whitespace-pre-line leading-relaxed" x-text="note.content"></p>
+
+        <div x-show="note.attachedImagePath" class="pt-1">
+          <img :src="'/' + note.attachedImagePath" alt="Recuerdo" class="w-full max-h-64 object-cover rounded-xl border border-gray-200">
+        </div>
+
+        <div class="text-[10px] text-gray-400 font-medium pt-1">
+          Guardado el <span x-text="formatDate(note.createdAt)"></span>
+        </div>
+      </article>
+    </template>
+
+    <div x-show="filteredNotes.length === 0" class="text-center py-10 bg-white rounded-2xl border border-theme space-y-2">
+      <p class="text-2xl">💌</p>
+      <p class="text-xs text-gray-500 font-medium">Aún no hay cartas aquí. ¡Escribe el primer recuerdo para el bebé!</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function journalApp() {
+  return {
+    notes: {{ notes_json | safe }},
+    authorFilter: 'ALL',
+    showComposer: false,
+    authorRole: BabyTrack.getActiveParent(),
+    title: '',
+    content: '',
+    submitting: false,
+    init() {
+      window.addEventListener('parent-changed', (e) => {
+        this.authorRole = e.detail;
+      });
+    },
+    get filteredNotes() {
+      if (this.authorFilter === 'ALL') return this.notes;
+      return this.notes.filter(n => n.authorRole === this.authorFilter);
+    },
+    filterAuthor(role) {
+      this.authorFilter = role;
+    },
+    formatDate(iso) {
+      return new Date(iso).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
+    },
+    async refreshNotes() {
+      const res = await fetch('/api/v1/journal');
+      this.notes = await res.json();
+    },
+    async submitNote() {
+      this.submitting = true;
+      try {
+        const formData = new FormData();
+        formData.append('authorRole', this.authorRole);
+        formData.append('title', this.title);
+        formData.append('content', this.content);
+        const fileInput = this.$refs.photoInput;
+        if (fileInput && fileInput.files.length > 0) {
+          formData.append('photo', fileInput.files[0]);
+        }
+
+        const res = await fetch('/api/v1/journal', {
+          method: 'POST',
+          body: formData
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Error al guardar carta');
+        }
+        this.title = '';
+        this.content = '';
+        if (fileInput) fileInput.value = '';
+        this.showComposer = false;
+        await this.refreshNotes();
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        this.submitting = false;
+      }
+    },
+    async deleteNote(id) {
+      if (!confirm('¿Eliminar esta carta del diario?')) return;
+      const res = await fetch(`/api/v1/journal/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await this.refreshNotes();
+      }
+    }
+  };
+}
+</script>
+{% endblock %}

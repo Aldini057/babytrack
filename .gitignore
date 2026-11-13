@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+data/*.db
+data/*.sqlite*
+data/uploads/*
+!data/uploads/.gitkeep
+.pytest_cache/
+.vscode/

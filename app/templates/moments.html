@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div x-data="momentsVaultApp()" x-init="init()" class="space-y-4">
+
+  <!-- Encabezado y Selector de Pestaña (Álbum vs Bóveda) -->
+  <div class="bg-white rounded-3xl p-5 border border-theme shadow-theme space-y-3">
+    <div class="flex items-center justify-between gap-2">
+      <div>
+        <p class="text-[11px] uppercase tracking-wider font-bold text-theme-muted">Recuerdos & Respaldo</p>
+        <h2 class="text-lg font-extrabold text-gray-900">Momentos y Bóveda</h2>
+      </div>
+      <button 
+        type="button"
+        @click="activeSubTab === 'album' ? (showMomentModal = true) : (showVaultModal = true)"
+        class="px-3.5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:opacity-90 transition">
+        <span x-text="activeSubTab === 'album' ? '📸 Subir Foto' : '🗄️ Guardar Doc'"></span>
+      </button>
+    </div>
+
+    <!-- Sub-pestañas -->
+    <div class="grid grid-cols-2 gap-1.5 bg-gray-100 p-1 rounded-2xl">
+      <button 
+        type="button"
+        @click="activeSubTab = 'album'"
+        :class="activeSubTab === 'album' ? 'bg-white text-theme-primary shadow-2xs' : 'text-gray-600'"
+        class="py-2 rounded-xl text-xs font-bold transition">
+        📸 Álbum de Momentos (<span x-text="moments.length"></span>)
+      </button>
+      <button 
+        type="button"
+        @click="activeSubTab = 'boveda'"
+        :class="activeSubTab === 'boveda' ? 'bg-white text-theme-primary shadow-2xs' : 'text-gray-600'"
+        class="py-2 rounded-xl text-xs font-bold transition">
+        🗄️ Bóveda Clínica (<span x-text="vaultItems.length"></span>)
+      </button>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- TAB 1: ÁLBUM FOTOGRÁFICO CRONOLÓGICO DE MOMENTOS                       -->
+  <!-- ====================================================================== -->
+  <section x-show="activeSubTab === 'album'" class="space-y-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <template x-for="m in moments" :key="m.id">
+        <article class="bg-white rounded-3xl overflow-hidden border border-theme shadow-sm flex flex-col">
+          <div class="relative aspect-[4/3] bg-gray-900 overflow-hidden">
+            <img 
+              :src="m.imageUrl" 
+              :alt="m.title"
+              @click="openMomentLightbox(m)"
+              class="w-full h-full object-cover hover:scale-105 transition duration-300 cursor-pointer">
+            <span class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-black/65 text-white backdrop-blur-xs">
+              👶 Semana <span x-text="m.gestationalWeek"></span>, Día <span x-text="m.gestationalDay"></span>
+            </span>
+            <span 
+              :class="m.uploadedBy === 'MAMA' ? 'bg-rose-500 text-white' : 'bg-indigo-600 text-white'"
+              class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold shadow"
+              x-text="m.uploadedBy === 'MAMA' ? '👩 Mamá' : '👨 Papá'"></span>
+          </div>
+
+          <div class="p-3.5 flex-1 flex flex-col justify-between space-y-2">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <h3 class="text-sm font-extrabold text-gray-900 leading-snug" x-text="m.title"></h3>
+                <button @click="deleteMoment(m.id)" class="text-xs text-gray-300 hover:text-red-500 p-0.5" title="Eliminar">🗑️</button>
+              </div>
+              <p x-show="m.caption" class="text-xs text-gray-600 mt-1" x-text="m.caption"></p>
+            </div>
+            <p class="text-[10px] text-gray-400 font-semibold" x-text="m.momentDate"></p>
+          </div>
+        </article>
+      </template>
+    </div>
+
+    <div x-show="moments.length === 0" class="text-center py-10 bg-white rounded-2xl border border-theme space-y-2">
+      <p class="text-2xl">📸</p>
+      <p class="text-xs text-gray-500 font-medium">Aún no hay fotografías en el álbum de momentos especiales.</p>
+      <button @click="showMomentModal = true" class="text-xs font-bold text-theme-primary underline">Subir la primera foto del embarazo</button>
+    </div>
+  </section>
+
+  <!-- ====================================================================== -->
+  <!-- TAB 2: BÓVEDA DE DOCUMENTOS CLÍNICOS Y ADMINISTRATIVOS                 -->
+  <!-- ====================================================================== -->
+  <section x-show="activeSubTab === 'boveda'" x-cloak class="space-y-3">
+    <!-- Filtros de categoría -->
+    <div class="flex items-center space-x-1.5 overflow-x-auto pb-1">
+      <button @click="vaultFilter = 'ALL'" :class="vaultFilter === 'ALL' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">Todos</button>
+      <button @click="vaultFilter = 'POLIZA'" :class="vaultFilter === 'POLIZA' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">🛡️ Pólizas</button>
+      <button @click="vaultFilter = 'CARNET'" :class="vaultFilter === 'CARNET' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">📋 Carnet</button>
+      <button @click="vaultFilter = 'IDENTIFICACION'" :class="vaultFilter === 'IDENTIFICACION' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">🪪 IDs</button>
+      <button @click="vaultFilter = 'INGRESO_HOSPITAL'" :class="vaultFilter === 'INGRESO_HOSPITAL' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'" class="px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap">🏥 Ingreso</button>
+    </div>
+
+    <div class="space-y-2.5">
+      <template x-for="doc in filteredVault" :key="doc.id">
+        <div class="bg-white rounded-2xl p-3.5 border border-theme shadow-2xs flex items-center justify-between gap-3">
+          <button 
+            type="button"
+            @click="openVaultDoc(doc)"
+            class="flex items-center space-x-3 text-left min-w-0 flex-1">
+            <div class="w-10 h-10 rounded-xl bg-theme-primary-light border border-theme-primary/20 flex items-center justify-center text-lg flex-shrink-0">
+              <span x-text="doc.fileCategory === 'PDF' ? '📄' : '🖼️'"></span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center space-x-1.5">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-700" x-text="vaultCategoryLabel(doc.category)"></span>
+                <span class="text-[10px] text-gray-400" x-text="formatBytes(doc.fileSizeBytes)"></span>
+              </div>
+              <h4 class="text-sm font-bold text-gray-900 truncate mt-0.5" x-text="doc.title"></h4>
+              <p x-show="doc.notes" class="text-xs text-gray-500 truncate" x-text="doc.notes"></p>
+            </div>
+          </button>
+
+          <div class="flex items-center space-x-1 flex-shrink-0">
+            <button @click="openVaultDoc(doc)" class="px-2.5 py-1 rounded-lg bg-theme-primary-light text-theme-primary text-xs font-bold">Ver</button>
+            <button @click="deleteVaultDoc(doc.id)" class="text-xs text-gray-300 hover:text-red-500 p-1">🗑️</button>
+          </div>
+        </div>
+      </template>
+
+      <div x-show="filteredVault.length === 0" class="text-center py-10 bg-white rounded-2xl border border-theme space-y-2">
+        <p class="text-2xl">🗄️</p>
+        <p class="text-xs text-gray-500 font-medium">Guarda aquí pólizas de seguro, carnets perinatales, INEs y órdenes de internamiento.</p>
+        <button @click="showVaultModal = true" class="text-xs font-bold text-theme-primary underline">Subir primer documento a la bóveda</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL: SUBIR FOTO AL ÁLBUM DE MOMENTOS -->
+  <div x-show="showMomentModal" x-cloak class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div @click.outside="showMomentModal = false" class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-3">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-sm font-bold text-gray-900">Subir Foto al Álbum</h3>
+        <button @click="showMomentModal = false" class="text-gray-400 text-lg">&times;</button>
+      </div>
+
+      <form @submit.prevent="submitMoment" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Título del momento</label>
+          <input type="text" x-model="momentForm.title" required placeholder="Ej. Anuncio a los abuelos" class="w-full px-3 py-2 border rounded-xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Fecha de la foto</label>
+          <input type="date" x-model="momentForm.momentDate" required class="w-full px-3 py-2 border rounded-xl text-xs">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Pie de foto / Historia (Opcional)</label>
+          <textarea x-model="momentForm.caption" rows="2" placeholder="Describe este recuerdo..." class="w-full px-3 py-2 border rounded-xl text-xs"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Fotografía</label>
+          <input type="file" x-ref="momentPhotoInput" accept="image/*" required class="w-full text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-theme-primary file:text-white">
+        </div>
+        <div class="flex space-x-2 pt-2">
+          <button type="button" @click="showMomentModal = false" class="w-1/2 py-2 border rounded-xl text-xs font-bold text-gray-600">Cancelar</button>
+          <button type="submit" :disabled="submitting" class="w-1/2 py-2 bg-theme-primary text-white rounded-xl text-xs font-bold">Guardar Foto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: SUBIR DOCUMENTO A LA BÓVEDA -->
+  <div x-show="showVaultModal" x-cloak class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div @click.outside="showVaultModal = false" class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-3">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="text-sm font-bold text-gray-900">Guardar en Bóveda Clínica</h3>
+        <button @click="showVaultModal = false" class="text-gray-400 text-lg">&times;</button>
+      </div>
+
+      <form @submit.prevent="submitVaultDoc" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Categoría</label>
+          <select x-model="vaultForm.category" class="w-full px-3 py-2 border rounded-xl text-xs bg-white">
+            <option value="POLIZA">🛡️ Póliza de Seguro / Gastos Médicos</option>
+            <option value="CARNET">📋 Carnet Perinatal</option>
+            <option value="IDENTIFICACION">🪪 Identificación Oficial (INE / Pasaporte)</option>
+            <option value="INGRESO_HOSPITAL">🏥 Orden de Internamiento / Registro Hospital</option>
+            <option value="OTRO">📁 Otro Documento</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Título del documento</label>
+          <input type="text" x-model="vaultForm.title" required placeholder="Ej. Póliza GMM Maternidad 2027" class="w-full px-3 py-2 border rounded-xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Notas / Número de Póliza (Opcional)</label>
+          <input type="text" x-model="vaultForm.notes" placeholder="Ej. Vigencia julio 2027" class="w-full px-3 py-2 border rounded-xl text-xs">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Archivo (PDF o Imagen)</label>
+          <input type="file" x-ref="vaultFileInput" accept="image/*,application/pdf" required class="w-full text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-theme-primary file:text-white">
+        </div>
+        <div class="flex space-x-2 pt-2">
+          <button type="button" @click="showVaultModal = false" class="w-1/2 py-2 border rounded-xl text-xs font-bold text-gray-600">Cancelar</button>
+          <button type="submit" :disabled="submitting" class="w-1/2 py-2 bg-theme-primary text-white rounded-xl text-xs font-bold">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function momentsVaultApp() {
+  return {
+    activeSubTab: 'album',
+    vaultFilter: 'ALL',
+    moments: {{ moments_json | safe }},
+    vaultItems: {{ vault_json | safe }},
+    showMomentModal: false,
+    showVaultModal: false,
+    submitting: false,
+    momentForm: {
+      title: '',
+      momentDate: '{{ today_iso }}',
+      caption: ''
+    },
+    vaultForm: {
+      category: 'POLIZA',
+      title: '',
+      notes: ''
+    },
+    init() {
+      if (window.location.hash === '#boveda') {
+        this.activeSubTab = 'boveda';
+      }
+    },
+    get filteredVault() {
+      if (this.vaultFilter === 'ALL') return this.vaultItems;
+      return this.vaultItems.filter(d => d.category === this.vaultFilter);
+    },
+    vaultCategoryLabel(cat) {
+      const map = {
+        POLIZA: '🛡️ Póliza',
+        CARNET: '📋 Carnet',
+        IDENTIFICACION: '🪪 ID',
+        INGRESO_HOSPITAL: '🏥 Hospital',
+        OTRO: '📁 Otro'
+      };
+      return map[cat] || cat;
+    },
+    formatBytes(bytes) {
+      if (!bytes) return '0 KB';
+      if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    },
+    openMomentLightbox(m) {
+      BabyTrack.openFileViewer({
+        id: m.id,
+        originalFilename: m.title + ' (Sem ' + m.gestationalWeek + '+' + m.gestationalDay + ')',
+        url: m.imageUrl,
+        fileCategory: 'IMAGE'
+      }, 'Álbum de Momentos');
+    },
+    openVaultDoc(doc) {
+      BabyTrack.openFileViewer({
+        id: doc.id,
+        originalFilename: doc.originalFilename,
+        url: doc.url,
+        fileCategory: doc.fileCategory
+      }, doc.title);
+    },
+    async refreshAll() {
+      const [mRes, vRes] = await Promise.all([
+        fetch('/api/v1/moments'),
+        fetch('/api/v1/vault')
+      ]);
+      this.moments = await mRes.json();
+      this.vaultItems = await vRes.json();
+    },
+    async submitMoment() {
+      const fileInput = this.$refs.momentPhotoInput;
+      if (!fileInput || !fileInput.files.length) return;
+      this.submitting = true;
+      try {
+        const fd = new FormData();
+        fd.append('title', this.momentForm.title);
+        fd.append('momentDate', this.momentForm.momentDate);
+        if (this.momentForm.caption) fd.append('caption', this.momentForm.caption);
+        fd.append('uploadedBy', BabyTrack.getActiveParent());
+        fd.append('photo', fileInput.files[0]);
+
+        const res = await fetch('/api/v1/moments', { method: 'POST', body: fd });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Error al subir foto');
+        }
+        this.showMomentModal = false;
+        this.momentForm = { title: '', momentDate: '{{ today_iso }}', caption: '' };
+        fileInput.value = '';
+        await this.refreshAll();
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        this.submitting = false;
+      }
+    },
+    async deleteMoment(id) {
+      if (!confirm('¿Eliminar esta fotografía del álbum?')) return;
+      const res = await fetch(`/api/v1/moments/${id}`, { method: 'DELETE' });
+      if (res.ok) await this.refreshAll();
+    },
+    async submitVaultDoc() {
+      const fileInput = this.$refs.vaultFileInput;
+      if (!fileInput || !fileInput.files.length) return;
+      this.submitting = true;
+      try {
+        const fd = new FormData();
+        fd.append('category', this.vaultForm.category);
+        fd.append('title', this.vaultForm.title);
+        if (this.vaultForm.notes) fd.append('notes', this.vaultForm.notes);
+        fd.append('uploadedBy', BabyTrack.getActiveParent());
+        fd.append('file', fileInput.files[0]);
+
+        const res = await fetch('/api/v1/vault', { method: 'POST', body: fd });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Error al guardar documento');
+        }
+        this.showVaultModal = false;
+        this.vaultForm = { category: 'POLIZA', title: '', notes: '' };
+        fileInput.value = '';
+        await this.refreshAll();
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        this.submitting = false;
+      }
+    },
+    async deleteVaultDoc(id) {
+      if (!confirm('¿Eliminar este documento de la bóveda?')) return;
+      const res = await fetch(`/api/v1/vault/${id}`, { method: 'DELETE' });
+      if (res.ok) await this.refreshAll();
+    }
+  };
+}
+</script>
+{% endblock %}

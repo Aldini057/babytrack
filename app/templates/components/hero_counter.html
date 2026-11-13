@@ -1,0 +1,182 @@
+<div x-data="{ showCalibrateModal: false }" class="space-y-4">
+
+  <!-- Tarjeta Hero Principal -->
+  <div class="bg-white rounded-3xl p-5 border border-theme shadow-theme relative overflow-hidden">
+    <!-- Fondo decorativo sutil -->
+    <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-theme-primary-light/50 blur-2xl pointer-events-none"></div>
+
+    <!-- Etiqueta superior de estado -->
+    <div class="flex items-center justify-between mb-3">
+      <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-theme-primary-light text-theme-primary">
+        {% if settings.gender_mode == 'BOY' %}
+          💙 ¡Es un Niño en camino!
+        {% elif settings.gender_mode == 'GIRL' %}
+          💖 ¡Es una Niña en camino!
+        {% else %}
+          🌿 Dulce Espera · Género Sorpresa
+        {% endif %}
+      </div>
+
+      <button @click="showCalibrateModal = true" class="text-xs text-theme-muted hover:text-theme-primary flex items-center space-x-1 py-1 px-2 rounded-lg hover:bg-gray-100/60 transition">
+        <span>⚙️</span>
+        <span class="underline">Calibrar</span>
+      </button>
+    </div>
+
+    <!-- Contador de Semanas y Días -->
+    <div class="text-center py-2">
+      <p class="text-xs uppercase tracking-widest text-theme-muted font-bold mb-1">Edad Gestacional Actual</p>
+      <div class="flex items-baseline justify-center space-x-2">
+        <span class="text-5xl font-black text-theme-primary tracking-tight">{{ metrics.weeks }}</span>
+        <span class="text-base font-semibold text-gray-500">sem</span>
+        <span class="text-3xl font-extrabold text-theme-primary/80">+</span>
+        <span class="text-5xl font-black text-theme-primary tracking-tight">{{ metrics.days }}</span>
+        <span class="text-base font-semibold text-gray-500">días</span>
+      </div>
+      <p class="text-xs text-theme-muted mt-1 font-medium">
+        ({{ metrics.elapsedDays }} días transcurridos de 280)
+      </p>
+    </div>
+
+    <!-- Barra de Progreso y Cuenta Regresiva -->
+    <div class="mt-4 space-y-2">
+      <div class="flex justify-between items-center text-xs font-semibold">
+        <span class="text-theme-muted">Progreso hacia el parto</span>
+        <span class="text-theme-primary font-bold">{{ metrics.progressPercent }}%</span>
+      </div>
+      <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden p-0.5 border border-gray-200">
+        <div class="bg-theme-primary h-full rounded-full transition-all duration-700 ease-out" style="width: {{ metrics.progressPercent }}%;"></div>
+      </div>
+      <div class="flex items-center justify-between text-xs text-theme-muted pt-1">
+        <span>Inicio (FUM)</span>
+        <span class="font-bold text-theme-primary">🎯 {{ metrics.daysRemaining }} días para el 07/07/2027</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tarjeta de Tamaño Comparativo del Bebé -->
+  <div class="bg-white rounded-2xl p-4 border border-theme shadow-sm flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-12 h-12 rounded-2xl bg-theme-primary-light flex items-center justify-center text-2xl border border-theme-primary/30">
+        {% if metrics.weeks <= 5 %}
+          🌱
+        {% elif metrics.weeks <= 7 %}
+          🫐
+        {% elif metrics.weeks <= 10 %}
+          🍓
+        {% elif metrics.weeks <= 13 %}
+          🍑
+        {% elif metrics.weeks <= 17 %}
+          🍎
+        {% elif metrics.weeks <= 22 %}
+          🥭
+        {% elif metrics.weeks <= 27 %}
+          🌽
+        {% elif metrics.weeks <= 33 %}
+          🥥
+        {% else %}
+          🍉
+        {% endif %}
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-wider text-theme-muted font-bold">Tamaño de esta semana</p>
+        <h3 class="text-sm font-bold text-gray-900 leading-snug">{{ metrics.sizeComparison }}</h3>
+        <p class="text-xs text-theme-muted">{{ metrics.sizeWeight }}</p>
+      </div>
+    </div>
+    <div class="text-right">
+      <span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+        {{ metrics.trimesterName }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Selector Interactivo de Tema por Género -->
+  <div class="bg-white rounded-2xl p-4 border border-theme shadow-sm space-y-2">
+    <div class="flex items-center justify-between">
+      <span class="text-xs font-bold uppercase tracking-wider text-theme-muted">Identidad Visual & Género</span>
+      <span class="text-xs text-gray-400">Toca para cambiar</span>
+    </div>
+    <div class="grid grid-cols-3 gap-2 pt-1">
+      <!-- Sorpresa -->
+      <button 
+        type="button"
+        onclick="BabyTrack.setGenderTheme('SURPRISE')"
+        class="py-2 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center space-y-1 transition border {% if settings.gender_mode == 'SURPRISE' %}bg-[#5F8D75] text-white border-[#466C58] shadow-sm{% else %}bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100{% endif %}">
+        <span class="text-base">🌿</span>
+        <span>Sorpresa</span>
+      </button>
+
+      <!-- Niño -->
+      <button 
+        type="button"
+        onclick="BabyTrack.setGenderTheme('BOY')"
+        class="py-2 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center space-y-1 transition border {% if settings.gender_mode == 'BOY' %}bg-[#3B82F6] text-white border-[#2563EB] shadow-sm{% else %}bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100{% endif %}">
+        <span class="text-base">👦</span>
+        <span>Niño</span>
+      </button>
+
+      <!-- Niña -->
+      <button 
+        type="button"
+        onclick="BabyTrack.setGenderTheme('GIRL')"
+        class="py-2 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center space-y-1 transition border {% if settings.gender_mode == 'GIRL' %}bg-[#EC4899] text-white border-[#DB2777] shadow-sm{% else %}bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100{% endif %}">
+        <span class="text-base">👧</span>
+        <span>Niña</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal de Calibración Obstétrica -->
+  <div 
+    x-show="showCalibrateModal" 
+    x-cloak
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+    @keydown.escape.window="showCalibrateModal = false">
+    
+    <div 
+      @click.outside="showCalibrateModal = false"
+      class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-gray-100 space-y-4">
+      
+      <div class="flex items-center justify-between pb-2 border-b border-gray-100">
+        <h4 class="text-base font-bold text-gray-900 flex items-center space-x-2">
+          <span>🩺</span>
+          <span>Calibración de Semanas</span>
+        </h4>
+        <button @click="showCalibrateModal = false" class="text-gray-400 hover:text-gray-600 text-lg">&times;</button>
+      </div>
+
+      <p class="text-xs text-gray-600">
+        Si el ultrasonido o tu ginecólogo indica una edad gestacional diferente, ajústala aquí para que el contador sea 100% exacto:
+      </p>
+
+      <form onsubmit="BabyTrack.calibrateObstetric(event)" class="space-y-3">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Semanas</label>
+            <input type="number" name="weeks" value="{{ metrics.weeks }}" min="0" max="42" required class="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Días</label>
+            <input type="number" name="days" value="{{ metrics.days }}" min="0" max="6" required class="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Fecha Probable de Parto (FPP)</label>
+          <input type="date" name="dueDate" value="{{ settings.due_date.isoformat() }}" required class="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+        </div>
+
+        <div class="flex space-x-2 pt-2">
+          <button type="button" @click="showCalibrateModal = false" class="w-1/2 py-2 px-3 border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-50">
+            Cancelar
+          </button>
+          <button type="submit" class="w-1/2 py-2 px-3 bg-theme-primary text-white rounded-xl text-xs font-bold shadow hover:opacity-90">
+            Guardar Ajuste
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>

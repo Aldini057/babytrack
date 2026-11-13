@@ -1,0 +1,200 @@
+<!-- Drawer / Modal: Modo Consulta Médica en un Toque -->
+<div 
+  x-data="consultationModeDrawer()"
+  @open-consultation-mode.window="open()"
+  @keydown.escape.window="close()"
+  x-show="isOpen"
+  x-cloak
+  class="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/55 backdrop-blur-xs">
+
+  <div 
+    @click.outside="close()"
+    class="bg-theme-surface w-full max-w-lg max-h-[90vh] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-theme flex flex-col overflow-hidden">
+
+    <!-- Cabecera Clínica -->
+    <div class="bg-theme-primary text-white px-5 py-4 flex items-center justify-between">
+      <div class="flex items-center space-x-2.5">
+        <span class="text-2xl">🩺</span>
+        <div>
+          <h3 class="text-base font-extrabold leading-tight">Modo Consulta Médica</h3>
+          <p class="text-xs opacity-90" x-show="data">
+            <span x-text="data?.currentWeeks"></span> sem + <span x-text="data?.currentDays"></span> días · <span x-text="data?.trimesterName"></span>
+          </p>
+        </div>
+      </div>
+      <button type="button" @click="close()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-lg font-bold">&times;</button>
+    </div>
+
+    <!-- Cuerpo Scrollable -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+      <div x-show="loading" class="text-center py-10 text-xs text-theme-muted font-semibold">
+        Cargando resumen clínico...
+      </div>
+
+      <template x-if="!loading && data">
+        <div class="space-y-4">
+
+          <!-- Ficha de Identificación de Mamá & FPP -->
+          <div class="bg-white rounded-2xl p-3.5 border border-theme shadow-2xs space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] uppercase font-bold text-theme-muted tracking-wider">Datos Base del Embarazo</span>
+              <button type="button" @click="editingClinical = !editingClinical" class="text-[11px] font-bold text-theme-primary underline">
+                <span x-text="editingClinical ? 'Cerrar' : 'Editar Perfil Clínico'"></span>
+              </button>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-xs">
+              <div class="bg-gray-50 rounded-xl p-2">
+                <p class="text-[10px] text-gray-500 font-semibold">FPP</p>
+                <p class="font-bold text-gray-900" x-text="data.dueDate"></p>
+              </div>
+              <div class="bg-gray-50 rounded-xl p-2">
+                <p class="text-[10px] text-gray-500 font-semibold">Tipo Sangre</p>
+                <p class="font-bold text-gray-900" x-text="data.momBloodType || 'Sin definir'"></p>
+              </div>
+              <div class="bg-gray-50 rounded-xl p-2">
+                <p class="text-[10px] text-gray-500 font-semibold">Faltan</p>
+                <p class="font-bold text-theme-primary" x-text="data.daysRemaining + ' días'"></p>
+              </div>
+            </div>
+            <p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-1.5" x-show="data.allergiesNotes">
+              <strong>⚠️ Alergias / Notas:</strong> <span x-text="data.allergiesNotes"></span>
+            </p>
+
+            <!-- Edición rápida de Tipo de Sangre y Alergias -->
+            <form x-show="editingClinical" @submit.prevent="saveClinicalProfile()" class="pt-2 border-t space-y-2">
+              <div class="grid grid-cols-2 gap-2">
+                <input type="text" x-model="clinicalForm.bloodTypeMom" placeholder="Tipo de sangre (Ej. O+)" class="px-2.5 py-1.5 border rounded-lg text-xs">
+                <input type="text" x-model="clinicalForm.allergiesNotes" placeholder="Alergias conocidas..." class="px-2.5 py-1.5 border rounded-lg text-xs">
+              </div>
+              <button type="submit" class="w-full py-1.5 bg-theme-primary text-white rounded-lg text-xs font-bold">Guardar Datos Clínicos</button>
+            </form>
+          </div>
+
+          <!-- Últimos Signos Vitales -->
+          <div class="bg-white rounded-2xl p-3.5 border border-theme shadow-2xs space-y-2">
+            <p class="text-[11px] uppercase font-bold text-theme-muted tracking-wider">Últimos Signos Vitales</p>
+            <template x-if="data.latestVitals">
+              <div class="grid grid-cols-3 gap-2">
+                <div class="bg-blue-50/70 border border-blue-100 rounded-xl p-2.5 text-center">
+                  <p class="text-[10px] text-blue-700 font-bold">Peso Mamá</p>
+                  <p class="text-sm font-black text-blue-950" x-text="data.latestVitals.momWeightKg ? data.latestVitals.momWeightKg + ' kg' : '—'"></p>
+                </div>
+                <div class="bg-rose-50/70 border border-rose-100 rounded-xl p-2.5 text-center">
+                  <p class="text-[10px] text-rose-700 font-bold">Presión Art.</p>
+                  <p class="text-sm font-black text-rose-950" x-text="data.latestVitals.bloodPressure || '—'"></p>
+                </div>
+                <div class="bg-emerald-50/70 border border-emerald-100 rounded-xl p-2.5 text-center">
+                  <p class="text-[10px] text-emerald-700 font-bold">Latido Bebé</p>
+                  <p class="text-sm font-black text-emerald-950" x-text="data.latestVitals.babyHeartRateBpm ? data.latestVitals.babyHeartRateBpm + ' lpm' : '—'"></p>
+                </div>
+              </div>
+            </template>
+            <template x-if="!data.latestVitals">
+              <p class="text-xs text-gray-500">Aún no hay peso o presión registrados en citas médicas.</p>
+            </template>
+          </div>
+
+          <!-- Preguntas Pendientes para el Ginecólogo -->
+          <div class="bg-white rounded-2xl p-3.5 border border-theme shadow-2xs space-y-2">
+            <div class="flex items-center justify-between">
+              <p class="text-[11px] uppercase font-bold text-theme-muted tracking-wider">Preguntas para el Doctor</p>
+              <a href="/medical" class="text-[11px] font-bold text-theme-primary underline">Gestionar citas →</a>
+            </div>
+            <template x-if="data.pendingQuestions.length > 0">
+              <div class="space-y-2">
+                <template x-for="pq in data.pendingQuestions" :key="pq.appointmentId">
+                  <div class="bg-amber-50/60 border border-amber-200 rounded-xl p-2.5 space-y-1">
+                    <p class="text-[10px] font-bold text-amber-800" x-text="pq.doctorOrClinic"></p>
+                    <p class="text-xs text-gray-800 whitespace-pre-line" x-text="pq.questions"></p>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <template x-if="data.pendingQuestions.length === 0">
+              <p class="text-xs text-gray-500">Sin dudas anotadas en citas programadas.</p>
+            </template>
+          </div>
+
+          <!-- Accesos Rápidos a Últimos Estudios y Ecos -->
+          <div class="bg-white rounded-2xl p-3.5 border border-theme shadow-2xs space-y-2.5">
+            <p class="text-[11px] uppercase font-bold text-theme-muted tracking-wider">Últimos Estudios & Ecos (1 toque para abrir)</p>
+            <div class="space-y-2" x-show="data.recentStudies.length > 0 || data.recentUltrasounds.length > 0">
+              <template x-for="st in [...data.recentUltrasounds, ...data.recentStudies]" :key="st.id">
+                <div class="p-2.5 rounded-xl bg-gray-50 border border-gray-200 space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-gray-900" x-text="st.title"></span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-theme-primary-light text-theme-primary" x-text="'Sem ' + st.gestationalWeek"></span>
+                  </div>
+                  <div class="flex flex-wrap gap-1.5">
+                    <template x-for="att in st.attachments" :key="att.id">
+                      <button 
+                        type="button"
+                        @click="BabyTrack.openFileViewer(att, st.title, st.attachments)"
+                        class="inline-flex items-center space-x-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-white border border-gray-300 hover:border-theme-primary text-gray-700 shadow-2xs">
+                        <span x-text="att.fileCategory === 'PDF' ? '📄' : '🖼️'"></span>
+                        <span class="truncate max-w-[140px]" x-text="att.originalFilename"></span>
+                      </button>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </div>
+            <p x-show="data.recentStudies.length === 0 && data.recentUltrasounds.length === 0" class="text-xs text-gray-500">
+              Aún no hay estudios ni ultrasonidos cargados.
+            </p>
+          </div>
+
+        </div>
+      </template>
+    </div>
+
+    <!-- Pie -->
+    <div class="bg-white px-4 py-3 border-t border-theme flex justify-between items-center">
+      <a href="/medical" class="text-xs font-bold text-theme-primary hover:underline">Ir al Módulo Médico completo →</a>
+      <button type="button" @click="close()" class="px-4 py-1.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function consultationModeDrawer() {
+  return {
+    isOpen: false,
+    loading: false,
+    data: null,
+    editingClinical: false,
+    clinicalForm: { bloodTypeMom: '', allergiesNotes: '' },
+    async open() {
+      this.isOpen = true;
+      await this.fetchData();
+    },
+    close() {
+      this.isOpen = false;
+    },
+    async fetchData() {
+      this.loading = true;
+      try {
+        const res = await fetch('/api/v1/medical/consultation-mode');
+        this.data = await res.json();
+        this.clinicalForm.bloodTypeMom = this.data.momBloodType || '';
+        this.clinicalForm.allergiesNotes = this.data.allergiesNotes || '';
+      } catch (e) {
+        console.error(e);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async saveClinicalProfile() {
+      const res = await fetch('/api/v1/settings/obstetric', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(this.clinicalForm)
+      });
+      if (res.ok) {
+        this.editingClinical = false;
+        await this.fetchData();
+      }
+    }
+  };
+}
+</script>

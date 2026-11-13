@@ -1,0 +1,145 @@
+{
+  "version": "v1",
+  "module": "BabyTrack Complete REST API Contracts (Sprints 1 to 4 - All 5 Modules)",
+  "baseUrl": "http://localhost:8000",
+  "endpoints": {
+    "healthCheck": {
+      "method": "GET",
+      "path": "/health"
+    },
+    "pinLogin": {
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "request": {
+        "pin": "0707",
+        "activeParent": "MAMA"
+      }
+    },
+    "authStatus": {
+      "method": "GET",
+      "path": "/api/v1/auth/status"
+    },
+    "getSettingsAndProgress": {
+      "method": "GET",
+      "path": "/api/v1/settings"
+    },
+    "updateGenderTheme": {
+      "method": "PUT",
+      "path": "/api/v1/settings/gender-theme",
+      "request": {
+        "genderMode": "GIRL",
+        "babyNickname": "Nuestra Niña"
+      }
+    },
+    "calibrateObstetric": {
+      "method": "PUT",
+      "path": "/api/v1/settings/obstetric",
+      "request": {
+        "currentWeeks": 6,
+        "currentDays": 2,
+        "dueDate": "2027-07-07",
+        "bloodTypeMom": "O+",
+        "allergiesNotes": "Ninguna"
+      }
+    },
+    "listChecklist": {
+      "method": "GET",
+      "path": "/api/v1/checklist?category=HABITACION&trimester=2"
+    },
+    "checklistSummary": {
+      "method": "GET",
+      "path": "/api/v1/checklist/summary"
+    },
+    "toggleChecklistItem": {
+      "method": "PATCH",
+      "path": "/api/v1/checklist/{item_id}/toggle",
+      "request": {
+        "completedBy": "MAMA",
+        "actualCostMxn": 1200.0
+      }
+    },
+    "listAppointments": {
+      "method": "GET",
+      "path": "/api/v1/medical/appointments"
+    },
+    "createAppointment": {
+      "method": "POST",
+      "path": "/api/v1/medical/appointments",
+      "request": {
+        "appointmentDate": "2026-11-12T10:00:00",
+        "doctorOrClinic": "Dra. Sofía Martínez · Hospital Ángeles",
+        "momWeightKg": 61.5,
+        "bloodPressure": "110/70",
+        "babyHeartRateBpm": 148,
+        "questionsForDoctor": "¿Cuándo realizamos el primer ultrasonido estructural?",
+        "status": "SCHEDULED"
+      }
+    },
+    "createStudyWithHybridAttachments": {
+      "method": "POST",
+      "path": "/api/v1/medical/studies",
+      "contentType": "multipart/form-data",
+      "fields": {
+        "studyType": "LABORATORIO",
+        "title": "Biometría Hemática y Química Sanguínea 1er Trimestre",
+        "studyDate": "2026-11-12",
+        "summaryNotes": "Valores dentro de rango normal",
+        "createdBy": "PAPA",
+        "files": ["resultado_laboratorio.pdf", "foto_receta_ginecologo.jpg"]
+      }
+    },
+    "listUltrasounds": {
+      "method": "GET",
+      "path": "/api/v1/medical/ultrasounds"
+    },
+    "consultationMode": {
+      "method": "GET",
+      "path": "/api/v1/medical/consultation-mode"
+    },
+    "listMoments": {
+      "method": "GET",
+      "path": "/api/v1/moments"
+    },
+    "createMoment": {
+      "method": "POST",
+      "path": "/api/v1/moments",
+      "contentType": "multipart/form-data",
+      "fields": {
+        "title": "Anuncio familiar",
+        "momentDate": "2026-11-12",
+        "caption": "Compartiendo la noticia con los abuelos",
+        "uploadedBy": "MAMA",
+        "photo": "momento.jpg"
+      }
+    },
+    "listVaultDocuments": {
+      "method": "GET",
+      "path": "/api/v1/vault?category=POLIZA"
+    },
+    "createVaultDocument": {
+      "method": "POST",
+      "path": "/api/v1/vault",
+      "contentType": "multipart/form-data",
+      "fields": {
+        "category": "POLIZA",
+        "title": "Póliza de Gastos Médicos Mayores",
+        "notes": "Cobertura maternidad activa",
+        "uploadedBy": "PAPA",
+        "file": "poliza_gmm.pdf"
+      }
+    },
+    "listJournalNotes": {
+      "method": "GET",
+      "path": "/api/v1/journal?author=MAMA"
+    },
+    "createJournalNote": {
+      "method": "POST",
+      "path": "/api/v1/journal",
+      "request": {
+        "authorRole": "MAMA",
+        "title": "Cuando escuchamos tu latido por primera vez",
+        "content": "Hoy cumplimos 6 semanas y 2 días y estamos contando los días para el 7 de julio de 2027."
+      }
+    }
+  }
+}
