@@ -378,4 +378,61 @@ def test_google_calendar_links_ics_and_1_day_before_alerts(client):
     assert cfg_get.json()["googleCalendarId"] == "darielgameplay@gmail.com"
 
 
+def test_family_share_public_view_and_guestbook_notes(client):
+    """
+    Verifica la vista pública compartible (/familia y /compartir):
+    - Muestra en solo lectura el género, semanas/días, porcentaje, tamaño equivalente y galería de ecos.
+    - No expone controles de edición de género ni calibración.
+    - Permite que familiares dejen notas con su nombre y parentesco (authorRole='FAMILIA').
+    """
+    # 1. Subir un eco para verificar que aparece en la vista familiar
+    eco_img = _make_png_bytes(width=800, height=600, color="purple")
+    client.post(
+        "/api/v1/medical/studies",
+        data={
+            "studyType": "ULTRASONIDO",
+            "title": "Eco Compartido con la Familia",
+            "studyDate": "2026-11-12",
+            "summaryNotes": "¡Saludo para los abuelos!",
+            "createdBy": "MAMA",
+        },
+        files=[("files", ("eco_familia.png", eco_img, "image/png"))],
+    )
+
+    # 2. Un familiar deja una nota con su nombre y parentesco
+    res_note = client.post(
+        "/api/v1/journal",
+        data={
+            "authorRole": "FAMILIA",
+            "authorDisplayName": "Abuelita Carmen (Abuela Materna)",
+            "title": "¡Te esperamos con mucho amor!",
+            "content": "Ya queremos conocerte y consentirte mucho.",
+        },
+    )
+    assert res_note.status_code == 201
+    note_data = res_note.json()
+    assert note_data["authorRole"] == "FAMILIA"
+    assert note_data["authorDisplayName"] == "Abuelita Carmen (Abuela Materna)"
+
+    # 3. Filtrar notas de FAMILIA desde el API
+    res_fam_notes = client.get("/api/v1/journal?author=FAMILIA")
+    assert res_fam_notes.status_code == 200
+    assert len(res_fam_notes.json()) == 1
+    assert res_fam_notes.json()[0]["authorDisplayName"] == "Abuelita Carmen (Abuela Materna)"
+
+    # 4. Verificar renderizado de /familia y /compartir en modo solo lectura
+    for path in ("/familia", "/compartir"):
+        page = client.get(path)
+        assert page.status_code == 200
+        assert "Vista Familiar Compartida" in page.text
+        assert "del embarazo completado" in page.text
+        assert "Tamaño equivalente hoy" in page.text
+        assert "Eco Compartido con la Familia" in page.text
+        assert "Abuelita Carmen (Abuela Materna)" in page.text
+        # Asegurar que no incluye botones para cambiar el género ni calibrar fechas
+        assert "updateGenderTheme" not in page.text
+        assert "Calibrar Semanas" not in page.text
+
+
+
 

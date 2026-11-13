@@ -3,8 +3,8 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 class JournalNoteCreate(BaseModel):
-    authorRole: str = Field(..., description="MAMA o PAPA")
-    authorDisplayName: Optional[str] = None
+    authorRole: str = Field(..., description="MAMA, PAPA o FAMILIA")
+    authorDisplayName: Optional[str] = Field(None, max_length=80)
     title: str = Field(..., min_length=1, max_length=150)
     content: str = Field(..., min_length=1)
 

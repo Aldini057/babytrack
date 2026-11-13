@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="{{ settings.gender_mode if settings else 'SURPRISE' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{{ settings.baby_nickname if settings else 'Nuestro Bebé' }} · Seguimiento Familiar BabyTrack</title>
+
+  <!-- PWA Meta & Icons -->
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#5F8D75">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
+
+  <!-- Tailwind CSS & Temas -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/css/themes.css">
+
+  <!-- Alpine.js & Utilidades de Visor -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="/static/js/app.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="min-h-screen pb-12 antialiased selection:bg-emerald-200">
+
+  <!-- Barra Superior de Solo Lectura para Familia y Amigos -->
+  <header class="sticky top-0 z-30 backdrop-blur-md bg-white/85 border-b border-theme px-4 py-3">
+    <div class="max-w-lg mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-2.5">
+        <div class="w-9 h-9 rounded-full bg-theme-primary text-white flex items-center justify-center text-lg shadow-sm">
+          🍼
+        </div>
+        <div>
+          <h1 class="text-sm font-extrabold tracking-tight leading-none text-gray-900">
+            {{ settings.baby_nickname if settings else 'Nuestro Bebé' }}
+          </h1>
+          <p class="text-[11px] text-theme-muted font-semibold mt-0.5">
+            Vista Familiar Compartida · {{ settings.mom_name if settings else 'Mamá' }} & {{ settings.dad_name if settings else 'Papá' }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Indicador de Género (100% Solo Lectura - No Modificable) -->
+      <div>
+        {% if settings and settings.gender_mode == 'BOY' %}
+          <span class="inline-flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-extrabold bg-sky-100 text-sky-900 border border-sky-300 shadow-2xs">
+            <span>💙</span>
+            <span>¡Es un Niño!</span>
+          </span>
+        {% elif settings and settings.gender_mode == 'GIRL' %}
+          <span class="inline-flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-extrabold bg-pink-100 text-pink-900 border border-pink-300 shadow-2xs">
+            <span>🩷</span>
+            <span>¡Es una Niña!</span>
+          </span>
+        {% else %}
+          <span class="inline-flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-2xs">
+            <span>✨</span>
+            <span>Género: ¡Sorpresa!</span>
+          </span>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenido Principal -->
+  <main x-data="familyShareApp()" class="max-w-lg mx-auto px-4 pt-4 space-y-5">
+
+    <!-- ==================================================================== -->
+    <!-- 1. TARJETA PRINCIPAL: SEMANAS, FECHAS, PORCENTAJE Y TAMAÑO (LECTURA) -->
+    <!-- ==================================================================== -->
+    <section class="relative overflow-hidden rounded-3xl bg-white border border-theme p-5 shadow-theme space-y-4">
+      <div class="flex items-center justify-between">
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-theme-primary-light text-theme-primary">
+          {{ metrics.trimesterName }}
+        </span>
+        <span class="text-xs font-bold text-theme-muted">
+          FPP: {{ settings.due_date.strftime('%d/%m/%Y') if settings else '07/07/2027' }}
+        </span>
+      </div>
+
+      <!-- Contador Central de Semanas y Días -->
+      <div class="text-center py-2">
+        <p class="text-xs uppercase tracking-widest text-theme-muted font-bold mb-1">
+          Edad Gestacional Actual
+        </p>
+        <div class="flex items-baseline justify-center space-x-2">
+          <span class="text-5xl font-black text-theme-primary tracking-tight">{{ metrics.weeks }}</span>
+          <span class="text-lg font-bold text-gray-700">semanas</span>
+          <span class="text-3xl font-extrabold text-theme-accent">+ {{ metrics.days }}</span>
+          <span class="text-base font-semibold text-gray-600">
+            {% if metrics.days == 1 %}día{% else %}días{% endif %}
+          </span>
+        </div>
+      </div>
+
+      <!-- Comparador de Tamaño Equivalente y Peso -->
+      <div class="bg-theme-primary-light rounded-2xl p-3.5 flex items-center justify-between border border-theme">
+        <div class="flex items-center space-x-3">
+          <div class="text-3xl bg-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm">
+            {{ metrics.sizeComparison.split(' ')[0] }}
+          </div>
+          <div>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-theme-muted">Tamaño equivalente hoy</p>
+            <p class="text-sm font-extrabold text-gray-900">{{ metrics.sizeComparison }}</p>
+          </div>
+        </div>
+        <div class="text-right">
+          <p class="text-[11px] font-semibold text-theme-muted">Peso est.</p>
+          <p class="text-xs font-bold text-theme-primary">{{ metrics.sizeWeight }}</p>
+        </div>
+      </div>
+
+      <!-- Barra de Progreso y Porcentaje (280 días) -->
+      <div class="space-y-2">
+        <div class="flex justify-between items-center text-xs font-bold">
+          <span class="text-theme-primary">{{ metrics.progressPercent }}% del embarazo completado</span>
+          <span class="text-theme-muted">Faltan {{ metrics.daysRemaining }} días</span>
+        </div>
+        <div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden p-0.5 border border-gray-200">
+          <div 
+            class="h-full bg-theme-primary rounded-full transition-all duration-500"
+            style="width: {{ metrics.progressPercent }}%">
+          </div>
+        </div>
+        <div class="flex justify-between text-[11px] text-theme-muted font-semibold pt-0.5">
+          <span>{{ metrics.elapsedDays }} días de evolución</span>
+          <span>Meta: 40 semanas ({{ settings.due_date.strftime('%d/%m/%Y') if settings else '07/07/2027' }})</span>
+        </div>
+      </div>
+
+      <!-- Indicador Visual Fijo del Género (Sin permitir edición) -->
+      <div class="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+        <span class="font-bold text-gray-600">Estado de revelación del bebé:</span>
+        {% if settings and settings.gender_mode == 'BOY' %}
+          <span class="font-extrabold text-sky-700">💙 Confirmado: ¡Es Niño!</span>
+        {% elif settings and settings.gender_mode == 'GIRL' %}
+          <span class="font-extrabold text-pink-700">🩷 Confirmado: ¡Es Niña!</span>
+        {% else %}
+          <span class="font-extrabold text-emerald-700">✨ Sorpresa hasta la revelación</span>
+        {% endif %}
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 2. GALERÍA DE ULTRASONIDOS (ECOS) — SOLO LECTURA PARA LA FAMILIA     -->
+    <!-- ==================================================================== -->
+    <section class="space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-extrabold text-gray-900 flex items-center space-x-1.5">
+            <span>👶</span>
+            <span>Galería de Ultrasonidos (Ecos)</span>
+          </h2>
+          <p class="text-[11px] text-theme-muted">Toca cualquier foto para verla en pantalla completa y hacer zoom</p>
+        </div>
+        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200" x-text="ultrasounds.length + (ultrasounds.length === 1 ? ' eco' : ' ecos')"></span>
+      </div>
+
+      <div class="space-y-3">
+        <template x-for="eco in ultrasounds" :key="eco.id">
+          <div class="bg-white rounded-3xl p-4 border border-theme shadow-sm space-y-3">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200 mb-1">
+                  👶 Semana <span x-text="eco.gestationalWeek"></span>, Día <span x-text="eco.gestationalDay"></span>
+                </span>
+                <h4 class="text-base font-extrabold text-gray-900" x-text="eco.title"></h4>
+                <p class="text-xs text-gray-400" x-text="eco.studyDate"></p>
+              </div>
+            </div>
+
+            <p x-show="eco.summaryNotes" class="text-xs text-gray-700 bg-purple-50/40 rounded-xl p-2.5 border border-purple-100 whitespace-pre-line" x-text="eco.summaryNotes"></p>
+
+            <!-- Fotos del Ultrasonido en Grid -->
+            <div class="grid grid-cols-2 gap-2" x-show="eco.attachments && eco.attachments.some(a => a.fileCategory === 'IMAGE')">
+              <template x-for="att in eco.attachments.filter(a => a.fileCategory === 'IMAGE')" :key="att.id">
+                <button 
+                  type="button" 
+                  @click="BabyTrack.openFileViewer(att, eco.title, eco.attachments)"
+                  class="group relative aspect-square rounded-2xl overflow-hidden border border-gray-200 bg-black">
+                  <img :src="att.url" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="Ultrasonido">
+                  <span class="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-bold">🔍 Ampliar</span>
+                </button>
+              </template>
+            </div>
+
+            <!-- Reportes PDF del Ultrasonido (si existen) -->
+            <div class="space-y-1.5" x-show="eco.attachments && eco.attachments.some(a => a.fileCategory === 'PDF')">
+              <template x-for="att in eco.attachments.filter(a => a.fileCategory === 'PDF')" :key="att.id">
+                <button 
+                  type="button"
+                  @click="BabyTrack.openFileViewer(att, eco.title, eco.attachments)"
+                  class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 hover:border-theme-primary text-xs font-bold text-gray-800">
+                  <span class="flex items-center space-x-2 truncate">
+                    <span>📄</span>
+                    <span class="truncate" x-text="att.originalFilename"></span>
+                  </span>
+                  <span class="text-theme-primary flex-shrink-0">Ver documento →</span>
+                </button>
+              </template>
+            </div>
+          </div>
+        </template>
+
+        <div x-show="ultrasounds.length === 0" class="text-center py-8 bg-white rounded-2xl border border-theme space-y-1.5">
+          <p class="text-2xl">👶</p>
+          <p class="text-xs text-gray-500 font-medium">Muy pronto compartiremos aquí las primeras fotos de los ultrasonidos.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- 3. LIBRO DE VISITAS Y NOTAS DE LA FAMILIA CON SU NOMBRE              -->
+    <!-- ==================================================================== -->
+    <section class="space-y-3">
+      <div class="bg-white rounded-3xl p-5 border border-theme shadow-theme space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <p class="text-[11px] uppercase tracking-wider font-bold text-theme-muted">Cápsula de Amor Familiar</p>
+            <h2 class="text-base font-extrabold text-gray-900">💝 Déjale una Nota o Deseo al Bebé</h2>
+          </div>
+          <button 
+            type="button"
+            @click="showGuestForm = !showGuestForm"
+            class="px-3.5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:opacity-90 transition flex-shrink-0">
+            <span x-text="showGuestForm ? 'Cerrar' : '✍️ Escribir Nota'"></span>
+          </button>
+        </div>
+
+        <p class="text-xs text-gray-600">
+          Escribe un mensaje con tu nombre para que quede guardado en el diario del bebé en la <strong>Semana {{ metrics.weeks }}, Día {{ metrics.days }}</strong>.
+        </p>
+
+        <!-- Mensaje de confirmación tras enviar nota -->
+        <div x-show="justSaved" x-cloak class="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-3 text-xs font-bold flex items-center space-x-2">
+          <span>🎉</span>
+          <span>¡Muchas gracias! Tu mensaje quedó guardado para siempre en el diario del bebé.</span>
+        </div>
+
+        <!-- Formulario para Familiares y Amigos -->
+        <form x-show="showGuestForm" x-cloak @submit.prevent="submitFamilyNote" class="pt-3 border-t border-gray-100 space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1">Tu Nombre *</label>
+              <input 
+                type="text" 
+                x-model="guestForm.guestName" 
+                required 
+                maxlength="50"
+                placeholder="Ej. Abuelita Carmen / Tío Luis" 
+                class="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1">Parentesco / Relación (Opcional)</label>
+              <input 
+                type="text" 
+                x-model="guestForm.relationship" 
+                maxlength="30"
+                placeholder="Ej. Abuela, Tíos, Madrina, Amigos..." 
+                class="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Título o Dedicatoria *</label>
+            <input 
+              type="text" 
+              x-model="guestForm.title" 
+              required 
+              maxlength="150"
+              placeholder="Ej. ¡Te esperamos con los brazos abiertos!" 
+              class="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Tu Mensaje para el Bebé y los Papás *</label>
+            <textarea 
+              x-model="guestForm.content" 
+              rows="3" 
+              required 
+              placeholder="Escribe tus buenos deseos, consejos o lo que sientes al esperarlo..." 
+              class="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Foto de recuerdo (Opcional)</label>
+            <input 
+              type="file" 
+              x-ref="guestPhotoInput" 
+              accept="image/*" 
+              class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-theme-primary-light file:text-theme-primary">
+          </div>
+
+          <button 
+            type="submit" 
+            :disabled="submitting" 
+            class="w-full py-2.5 bg-theme-primary text-white rounded-xl text-xs font-bold shadow hover:opacity-95 disabled:opacity-50">
+            <span x-text="submitting ? 'Publicando tu nota...' : '💝 Publicar Nota para el Bebé'"></span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Muro de Notas (Solo Lectura: Nadie puede borrar nada desde este link) -->
+      <div class="space-y-3">
+        <template x-for="note in notes" :key="note.id">
+          <article 
+            :class="note.authorRole === 'MAMA' ? 'border-l-4 border-l-rose-400 bg-gradient-to-br from-white to-rose-50/40' : (note.authorRole === 'PAPA' ? 'border-l-4 border-l-indigo-500 bg-gradient-to-br from-white to-indigo-50/40' : 'border-l-4 border-l-amber-400 bg-gradient-to-br from-white to-amber-50/40')"
+            class="rounded-2xl p-4 border border-theme shadow-sm space-y-2">
+            
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span 
+                  :class="note.authorRole === 'MAMA' ? 'bg-rose-100 text-rose-800 border-rose-200' : (note.authorRole === 'PAPA' ? 'bg-indigo-100 text-indigo-800 border-indigo-200' : 'bg-amber-100 text-amber-900 border-amber-200')"
+                  class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border">
+                  <span x-text="authorLabel(note)"></span>
+                </span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-primary-light text-theme-primary">
+                  Semana <span x-text="note.gestationalWeek"></span>, Día <span x-text="note.gestationalDay"></span>
+                </span>
+              </div>
+              <span class="text-[10px] text-gray-400 font-medium" x-text="formatDate(note.createdAt)"></span>
+            </div>
+
+            <h3 class="text-sm font-extrabold text-gray-900 leading-snug" x-text="note.title"></h3>
+            <p class="text-xs text-gray-700 whitespace-pre-line leading-relaxed" x-text="note.content"></p>
+
+            <div x-show="note.attachedImagePath" class="pt-1">
+              <img :src="'/' + note.attachedImagePath" alt="Recuerdo" class="w-full max-h-64 object-cover rounded-xl border border-gray-200">
+            </div>
+          </article>
+        </template>
+
+        <div x-show="notes.length === 0" class="text-center py-8 bg-white rounded-2xl border border-theme space-y-2">
+          <p class="text-2xl">💌</p>
+          <p class="text-xs text-gray-500 font-medium">¡Sé la primera persona de la familia en dejarle una nota al bebé!</p>
+          <button @click="showGuestForm = true" class="text-xs font-bold text-theme-primary underline">Escribir la primera nota</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Visor de Archivos e Imágenes con Zoom para los Ultrasonidos -->
+  {% include "components/modal_file_viewer.html" %}
+
+  <script>
+  function familyShareApp() {
+    return {
+      ultrasounds: {{ ultrasounds_json | safe }},
+      notes: {{ notes_json | safe }},
+      showGuestForm: false,
+      submitting: false,
+      justSaved: false,
+      guestForm: {
+        guestName: localStorage.getItem('babytrack_guest_name') || '',
+        relationship: localStorage.getItem('babytrack_guest_rel') || '',
+        title: '',
+        content: ''
+      },
+      authorLabel(note) {
+        if (note.authorRole === 'MAMA') return '👩 Mamá (' + (note.authorDisplayName || 'Mamá') + ')';
+        if (note.authorRole === 'PAPA') return '👨 Papá (' + (note.authorDisplayName || 'Papá') + ')';
+        return '💝 ' + (note.authorDisplayName || 'Familia');
+      },
+      formatDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+      },
+      async submitFamilyNote() {
+        const nameClean = (this.guestForm.guestName || '').trim();
+        const relClean = (this.guestForm.relationship || '').trim();
+        if (!nameClean) {
+          alert('Por favor escribe tu nombre.');
+          return;
+        }
+        const fullAuthorDisplay = relClean ? `${nameClean} (${relClean})` : nameClean;
+
+        localStorage.setItem('babytrack_guest_name', nameClean);
+        localStorage.setItem('babytrack_guest_rel', relClean);
+
+        this.submitting = true;
+        this.justSaved = false;
+        try {
+          const fd = new FormData();
+          fd.append('authorRole', 'FAMILIA');
+          fd.append('authorDisplayName', fullAuthorDisplay);
+          fd.append('title', this.guestForm.title);
+          fd.append('content', this.guestForm.content);
+          if (this.$refs.guestPhotoInput && this.$refs.guestPhotoInput.files[0]) {
+            fd.append('photo', this.$refs.guestPhotoInput.files[0]);
+          }
+
+          const res = await fetch('/api/v1/journal', { method: 'POST', body: fd });
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'No se pudo guardar tu nota');
+          }
+          const created = await res.json();
+          this.notes.unshift(created);
+          this.guestForm.title = '';
+          this.guestForm.content = '';
+          if (this.$refs.guestPhotoInput) this.$refs.guestPhotoInput.value = '';
+          this.showGuestForm = false;
+          this.justSaved = true;
+        } catch (e) {
+          alert(e.message);
+        } finally {
+          this.submitting = false;
+        }
+      }
+    };
+  }
+  </script>
+</body>
+</html>

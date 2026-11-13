@@ -194,3 +194,33 @@ def render_moments(request: Request, db: Session = Depends(get_db)):
             "active_tab": "moments"
         }
     )
+
+
+@app.get("/familia", response_class=HTMLResponse, tags=["Web"])
+@app.get("/compartir", response_class=HTMLResponse, tags=["Web"])
+def render_family_share(request: Request, db: Session = Depends(get_db)):
+    """
+    Vista pública compartible para Familia y Amigos (/familia o /compartir):
+    - Muestra en modo solo-lectura el género actual, las semanas/días, el porcentaje,
+      el tamaño equivalente y la galería de ultrasonidos (ecos).
+    - Permite que familiares y amigos dejen notas con su nombre y parentesco sin poder
+      modificar ni borrar nada de la aplicación.
+    """
+    record = get_or_create_settings(db)
+    metrics = ObstetricCalculatorService.calculate_metrics(
+        due_date=record.due_date,
+        calibration_offset_days=record.calibration_offset_days,
+    )
+    ultrasounds = list_studies(study_type="ULTRASONIDO", appointment_id=None, db=db)
+    notes = list_journal_notes(author=None, db=db)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="family_share.html",
+        context={
+            "settings": record,
+            "metrics": metrics,
+            "ultrasounds_json": json.dumps([u.model_dump(mode="json") for u in ultrasounds]),
+            "notes_json": json.dumps([n.model_dump(mode="json") for n in notes]),
+        },
+    )

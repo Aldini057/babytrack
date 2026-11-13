@@ -21,6 +21,37 @@
     <span class="text-xs font-bold bg-white/20 px-2.5 py-1 rounded-full flex-shrink-0">Abrir →</span>
   </button>
 
+  <!-- Tarjeta para Compartir Link Especial de Familia y Amigos (/familia) -->
+  <div x-data="{ copied: false }" class="bg-white rounded-2xl p-4 border border-theme shadow-sm space-y-2.5">
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center space-x-2.5">
+        <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-xl">
+          👨‍👩‍👧‍👦
+        </div>
+        <div>
+          <h3 class="text-sm font-extrabold text-gray-900">Link para Familia y Amigos</h3>
+          <p class="text-[11px] text-gray-500">Solo ven el género, semanas, porcentaje, tamaño, ecos y pueden dejar notas con su nombre</p>
+        </div>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-2 pt-1">
+      <button 
+        type="button"
+        @click="navigator.clipboard.writeText(window.location.origin + '/familia'); copied = true; setTimeout(() => copied = false, 2500)"
+        class="py-2 px-3 rounded-xl bg-theme-primary text-white text-xs font-bold shadow-2xs hover:opacity-95 transition flex items-center justify-center space-x-1.5">
+        <span>🔗</span>
+        <span x-text="copied ? '¡Link Copiado!' : 'Copiar Link /familia'"></span>
+      </button>
+      <a 
+        href="/familia" 
+        target="_blank"
+        class="py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold transition flex items-center justify-center space-x-1.5">
+        <span>👁️</span>
+        <span>Ver Vista Familiar</span>
+      </a>
+    </div>
+  </div>
+
   <!-- Accesos Rápidos a los 5 Módulos Activos -->
   <section class="space-y-3 pt-1">
     <div class="flex items-center justify-between">

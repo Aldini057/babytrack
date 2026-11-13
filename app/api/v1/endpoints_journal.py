@@ -28,17 +28,17 @@ def _to_response(note: BabyJournalNote) -> JournalNoteResponse:
 
 @router.get("", response_model=List[JournalNoteResponse])
 def list_journal_notes(
-    author: Optional[str] = Query(None, description="Filtrar por MAMA o PAPA"),
+    author: Optional[str] = Query(None, description="Filtrar por MAMA, PAPA o FAMILIA"),
     db: Session = Depends(get_db),
 ):
     """Lista las cartas y pensamientos del diario ordenados del más reciente al más antiguo."""
     query = db.query(BabyJournalNote)
-    if author:
+    if isinstance(author, str) and author:
         role_upper = author.upper()
-        if role_upper not in {"MAMA", "PAPA"}:
+        if role_upper not in {"MAMA", "PAPA", "FAMILIA"}:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El filtro author debe ser MAMA o PAPA",
+                detail="El filtro author debe ser MAMA, PAPA o FAMILIA",
             )
         query = query.filter(BabyJournalNote.author_role == role_upper)
 
@@ -49,14 +49,14 @@ def list_journal_notes(
 @router.post("", response_model=JournalNoteResponse, status_code=status.HTTP_201_CREATED)
 async def create_journal_note(request: Request, db: Session = Depends(get_db)):
     """
-    Crea una nueva carta/pensamiento en el diario del bebé.
+    Crea una nueva carta/pensamiento en el diario del bebé (Mamá, Papá o Familia/Amigos).
     Soporta tanto JSON (application/json) como FormData con foto opcional (multipart/form-data).
     Asigna automáticamente la semana y día gestacional actuales.
     """
     content_type = request.headers.get("content-type", "").lower()
     attached_path: Optional[str] = None
 
-    if "multipart/form-data" in content_type:
+    if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
         form = await request.form()
         author_role_raw = str(form.get("authorRole") or "")
         author_display_raw = form.get("authorDisplayName")
@@ -66,7 +66,7 @@ async def create_journal_note(request: Request, db: Session = Depends(get_db)):
 
         payload = JournalNoteCreate(
             authorRole=author_role_raw,
-            authorDisplayName=str(author_display_raw) if author_display_raw else None,
+            authorDisplayName=str(author_display_raw).strip() if author_display_raw else None,
             title=title_raw,
             content=content_raw,
         )
@@ -86,10 +86,10 @@ async def create_journal_note(request: Request, db: Session = Depends(get_db)):
             )
 
     role_upper = payload.authorRole.upper()
-    if role_upper not in {"MAMA", "PAPA"}:
+    if role_upper not in {"MAMA", "PAPA", "FAMILIA"}:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="authorRole debe ser MAMA o PAPA",
+            detail="authorRole debe ser MAMA, PAPA o FAMILIA",
         )
 
     settings_rec = get_or_create_settings(db)
@@ -98,13 +98,18 @@ async def create_journal_note(request: Request, db: Session = Depends(get_db)):
         calibration_offset_days=settings_rec.calibration_offset_days,
     )
 
-    display_name = payload.authorDisplayName
+    display_name = (payload.authorDisplayName or "").strip()
     if not display_name:
-        display_name = settings_rec.mom_name if role_upper == "MAMA" else settings_rec.dad_name
+        if role_upper == "MAMA":
+            display_name = settings_rec.mom_name
+        elif role_upper == "PAPA":
+            display_name = settings_rec.dad_name
+        else:
+            display_name = "Familia"
 
     note = BabyJournalNote(
         author_role=role_upper,
-        author_display_name=display_name,
+        author_display_name=display_name[:80],
         title=payload.title.strip(),
         content=payload.content.strip(),
         gestational_week=metrics["weeks"],

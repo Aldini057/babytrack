@@ -66,24 +66,30 @@
   </div>
 
   <!-- Filtros por Autor -->
-  <div class="flex items-center space-x-2">
+  <div class="flex items-center space-x-1.5 overflow-x-auto pb-1">
     <button 
       @click="filterAuthor('ALL')"
       :class="authorFilter === 'ALL' ? 'bg-theme-primary text-white border-transparent' : 'bg-white text-gray-600 border-theme'"
-      class="px-3.5 py-1.5 rounded-full text-xs font-bold border transition">
+      class="px-3.5 py-1.5 rounded-full text-xs font-bold border transition whitespace-nowrap">
       Todas (<span x-text="notes.length"></span>)
     </button>
     <button 
       @click="filterAuthor('MAMA')"
       :class="authorFilter === 'MAMA' ? 'bg-rose-500 text-white border-transparent' : 'bg-white text-rose-700 border-rose-200'"
-      class="px-3.5 py-1.5 rounded-full text-xs font-bold border transition">
-      👩 Solo Mamá
+      class="px-3.5 py-1.5 rounded-full text-xs font-bold border transition whitespace-nowrap">
+      👩 Mamá
     </button>
     <button 
       @click="filterAuthor('PAPA')"
       :class="authorFilter === 'PAPA' ? 'bg-indigo-600 text-white border-transparent' : 'bg-white text-indigo-700 border-indigo-200'"
-      class="px-3.5 py-1.5 rounded-full text-xs font-bold border transition">
-      👨 Solo Papá
+      class="px-3.5 py-1.5 rounded-full text-xs font-bold border transition whitespace-nowrap">
+      👨 Papá
+    </button>
+    <button 
+      @click="filterAuthor('FAMILIA')"
+      :class="authorFilter === 'FAMILIA' ? 'bg-amber-500 text-white border-transparent' : 'bg-white text-amber-800 border-amber-200'"
+      class="px-3.5 py-1.5 rounded-full text-xs font-bold border transition whitespace-nowrap">
+      💝 Familia
     </button>
   </div>
 
@@ -91,15 +97,15 @@
   <div class="space-y-3">
     <template x-for="note in filteredNotes" :key="note.id">
       <article 
-        :class="note.authorRole === 'MAMA' ? 'border-l-4 border-l-rose-400 bg-gradient-to-br from-white to-rose-50/40' : 'border-l-4 border-l-indigo-500 bg-gradient-to-br from-white to-indigo-50/40'"
+        :class="note.authorRole === 'MAMA' ? 'border-l-4 border-l-rose-400 bg-gradient-to-br from-white to-rose-50/40' : (note.authorRole === 'PAPA' ? 'border-l-4 border-l-indigo-500 bg-gradient-to-br from-white to-indigo-50/40' : 'border-l-4 border-l-amber-400 bg-gradient-to-br from-white to-amber-50/40')"
         class="rounded-2xl p-4 border border-theme shadow-sm space-y-2.5">
         
         <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center space-x-2">
+          <div class="flex items-center space-x-2 flex-wrap gap-y-1">
             <span 
-              :class="note.authorRole === 'MAMA' ? 'bg-rose-100 text-rose-800 border-rose-200' : 'bg-indigo-100 text-indigo-800 border-indigo-200'"
+              :class="note.authorRole === 'MAMA' ? 'bg-rose-100 text-rose-800 border-rose-200' : (note.authorRole === 'PAPA' ? 'bg-indigo-100 text-indigo-800 border-indigo-200' : 'bg-amber-100 text-amber-900 border-amber-200')"
               class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border">
-              <span x-text="note.authorRole === 'MAMA' ? '👩 Escrito por Mamá' : '👨 Escrito por Papá'"></span>
+              <span x-text="note.authorRole === 'MAMA' ? '👩 Escrito por Mamá' : (note.authorRole === 'PAPA' ? '👨 Escrito por Papá' : ('💝 ' + (note.authorDisplayName || 'Familia')))"></span>
             </span>
             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-theme-primary-light text-theme-primary">
               Semana <span x-text="note.gestationalWeek"></span>, Día <span x-text="note.gestationalDay"></span>
