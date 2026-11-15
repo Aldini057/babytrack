@@ -132,5 +132,24 @@
         Escribir →
       </span>
     </a>
+
+    <!-- Respaldo Completo en 1 Toque (.zip) -->
+    <div class="bg-white rounded-2xl p-4 border border-theme shadow-sm flex items-center justify-between gap-3">
+      <div class="flex items-center space-x-3 min-w-0">
+        <div class="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-xl flex-shrink-0">
+          💾
+        </div>
+        <div class="min-w-0">
+          <h3 class="text-sm font-bold text-gray-900">Respaldo Completo de Recuerdos</h3>
+          <p class="text-[11px] text-gray-500">Descarga en un archivo <code>.zip</code> todas tus citas, cartas, ecos, PDFs y fotos</p>
+        </div>
+      </div>
+      <a 
+        href="/api/v1/settings/backup.zip"
+        class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition flex-shrink-0">
+        ⬇ Descargar .zip
+      </a>
+    </div>
   </section>
 {% endblock %}
+

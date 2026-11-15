@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Respon
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models.medical import MedicalAppointment, MedicalStudy, StudyAttachment
+from app.models.medical import FetalMonitorLog, MedicalAppointment, MedicalStudy, StudyAttachment
 from app.schemas.medical_schema import (
     VALID_APPOINTMENT_STATUSES,
     VALID_APPOINTMENT_TYPES,
@@ -14,10 +14,13 @@ from app.schemas.medical_schema import (
     AppointmentUpdate,
     CalendarConfigPayload,
     ConsultationModeResponse,
+    FetalMonitorLogCreate,
+    FetalMonitorLogResponse,
     LatestVitalsSummary,
     MedicalStudyResponse,
     PendingQuestionItem,
     StudyAttachmentResponse,
+    VitalsHistoryItem,
 )
 from app.api.v1.endpoints_settings import get_or_create_settings
 from app.services.calendar_service import GoogleCalendarService
@@ -663,6 +666,23 @@ def get_consultation_mode(db: Session = Depends(get_db)):
             )
             break
 
+    # Historial cronológico (del más antiguo al más reciente) de citas con signos vitales
+    vitals_history: List[VitalsHistoryItem] = []
+    for a in reversed(appointments):
+        if a.mom_weight_kg is not None or a.blood_pressure or a.baby_heart_rate_bpm is not None:
+            vitals_history.append(
+                VitalsHistoryItem(
+                    appointmentId=a.id,
+                    appointmentDate=a.appointment_date,
+                    gestationalWeek=a.gestational_week,
+                    gestationalDay=a.gestational_day,
+                    doctorOrClinic=a.doctor_or_clinic,
+                    momWeightKg=float(a.mom_weight_kg) if a.mom_weight_kg is not None else None,
+                    bloodPressure=a.blood_pressure,
+                    babyHeartRateBpm=a.baby_heart_rate_bpm,
+                )
+            )
+
     pending_questions: List[PendingQuestionItem] = []
     for a in appointments:
         if a.status == "SCHEDULED" and a.questions_for_doctor and a.questions_for_doctor.strip():
@@ -705,7 +725,92 @@ def get_consultation_mode(db: Session = Depends(get_db)):
         trimesterName=metrics["trimesterName"],
         daysRemaining=metrics["daysRemaining"],
         latestVitals=latest_vitals,
+        vitalsHistory=vitals_history,
         pendingQuestions=pending_questions,
         recentStudies=[_study_to_response(s) for s in recent_studies],
         recentUltrasounds=[_study_to_response(u) for u in recent_ultrasounds],
     )
+
+
+# ==============================================================================
+# MONITOR DE BIENESTAR FETAL (CONTADOR DE PATADITAS Y CRONÓMETRO CONTRACCIONES)
+# ==============================================================================
+
+VALID_FETAL_LOG_TYPES = {"PATADITAS", "CONTRACCION"}
+
+
+def _fetal_log_to_response(item: FetalMonitorLog) -> FetalMonitorLogResponse:
+    return FetalMonitorLogResponse(
+        id=item.id,
+        logType=item.log_type,
+        recordedAt=item.recorded_at,
+        gestationalWeek=item.gestational_week,
+        gestationalDay=item.gestational_day,
+        kickCount=item.kick_count,
+        durationSeconds=item.duration_seconds,
+        intervalMinutes=float(item.interval_minutes) if item.interval_minutes is not None else None,
+        notes=item.notes,
+    )
+
+
+@router.get("/fetal-logs", response_model=List[FetalMonitorLogResponse])
+def list_fetal_monitor_logs(
+    log_type: Optional[str] = Query(None, alias="type"),
+    db: Session = Depends(get_db),
+):
+    """Lista las sesiones del contador de pataditas y del cronómetro de contracciones."""
+    query = db.query(FetalMonitorLog)
+    if isinstance(log_type, str) and log_type:
+        lt = log_type.upper()
+        if lt not in VALID_FETAL_LOG_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Tipo de monitoreo inválido. Válidos: {sorted(VALID_FETAL_LOG_TYPES)}",
+            )
+        query = query.filter(FetalMonitorLog.log_type == lt)
+
+    items = query.order_by(FetalMonitorLog.recorded_at.desc(), FetalMonitorLog.id.desc()).limit(60).all()
+    return [_fetal_log_to_response(i) for i in items]
+
+
+@router.post("/fetal-logs", response_model=FetalMonitorLogResponse, status_code=status.HTTP_201_CREATED)
+def create_fetal_monitor_log(payload: FetalMonitorLogCreate, db: Session = Depends(get_db)):
+    """Guarda un registro de pataditas fetales o de contracción con cálculo automático de semana gestacional."""
+    lt = (payload.logType or "").upper()
+    if lt not in VALID_FETAL_LOG_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"logType inválido. Válidos: {sorted(VALID_FETAL_LOG_TYPES)}",
+        )
+
+    settings_rec = get_or_create_settings(db)
+    metrics = ObstetricCalculatorService.calculate_metrics(
+        due_date=settings_rec.due_date,
+        calibration_offset_days=settings_rec.calibration_offset_days,
+    )
+
+    row = FetalMonitorLog(
+        log_type=lt,
+        gestational_week=metrics["weeks"],
+        gestational_day=metrics["days"],
+        kick_count=payload.kickCount,
+        duration_seconds=payload.durationSeconds,
+        interval_minutes=payload.intervalMinutes,
+        notes=payload.notes.strip() if payload.notes else None,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return _fetal_log_to_response(row)
+
+
+@router.delete("/fetal-logs/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_fetal_monitor_log(log_id: int, db: Session = Depends(get_db)):
+    """Elimina un registro del monitor de pataditas o contracciones."""
+    row = db.query(FetalMonitorLog).filter(FetalMonitorLog.id == log_id).first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registro de monitoreo no encontrado")
+    db.delete(row)
+    db.commit()
+    return None
+

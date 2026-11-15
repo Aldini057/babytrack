@@ -95,6 +95,17 @@ class LatestVitalsSummary(BaseModel):
     doctorOrClinic: Optional[str] = None
 
 
+class VitalsHistoryItem(BaseModel):
+    appointmentId: int
+    appointmentDate: datetime
+    gestationalWeek: int
+    gestationalDay: int
+    doctorOrClinic: str
+    momWeightKg: Optional[float] = None
+    bloodPressure: Optional[str] = None
+    babyHeartRateBpm: Optional[int] = None
+
+
 class PendingQuestionItem(BaseModel):
     appointmentId: int
     appointmentType: str = "MEDICO"
@@ -114,6 +125,28 @@ class ConsultationModeResponse(BaseModel):
     trimesterName: str
     daysRemaining: int
     latestVitals: Optional[LatestVitalsSummary]
+    vitalsHistory: List[VitalsHistoryItem] = []
     pendingQuestions: List[PendingQuestionItem]
     recentStudies: List[MedicalStudyResponse]
     recentUltrasounds: List[MedicalStudyResponse]
+
+
+class FetalMonitorLogCreate(BaseModel):
+    logType: str = Field(..., description="PATADITAS o CONTRACCION")
+    kickCount: Optional[int] = Field(None, ge=1, le=200)
+    durationSeconds: Optional[int] = Field(None, ge=1, le=86400)
+    intervalMinutes: Optional[float] = Field(None, ge=0, le=1440)
+    notes: Optional[str] = Field(None, max_length=500)
+
+
+class FetalMonitorLogResponse(BaseModel):
+    id: int
+    logType: str
+    recordedAt: datetime
+    gestationalWeek: int
+    gestationalDay: int
+    kickCount: Optional[int] = None
+    durationSeconds: Optional[int] = None
+    intervalMinutes: Optional[float] = None
+    notes: Optional[str] = None
+

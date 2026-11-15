@@ -106,8 +106,8 @@ def test_family_pin_authentication_flow(client):
     bad = client.post("/api/v1/auth/login", json={"pin": "9999", "activeParent": "PAPA"})
     assert bad.status_code == 401
 
-    # 3. PIN correcto (0707) -> 200 + Cookie HttpOnly firmada
-    ok = client.post("/api/v1/auth/login", json={"pin": "0707", "activeParent": "PAPA"})
+    # 3. PIN correcto (1419) -> 200 + Cookie HttpOnly firmada
+    ok = client.post("/api/v1/auth/login", json={"pin": "1419", "activeParent": "PAPA"})
     assert ok.status_code == 200
     assert ok.json()["authenticated"] is True
     assert ok.json()["activeParent"] == "PAPA"

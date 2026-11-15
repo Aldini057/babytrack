@@ -64,3 +64,18 @@ class StudyAttachment(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
 
     study = relationship("MedicalStudy", back_populates="attachments")
+
+
+class FetalMonitorLog(Base):
+    __tablename__ = "fetal_monitor_logs"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    log_type = Column(String(30), nullable=False, index=True)  # PATADITAS, CONTRACCION
+    recorded_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    gestational_week = Column(Integer, nullable=False)
+    gestational_day = Column(Integer, nullable=False)
+    kick_count = Column(Integer, nullable=True)  # Ej. 10 movimientos fetales
+    duration_seconds = Column(Integer, nullable=True)  # Duración de la sesión o de la contracción en segundos
+    interval_minutes = Column(Numeric(5, 1), nullable=True)  # Minutos desde la contracción previa
+    notes = Column(Text, nullable=True)
+

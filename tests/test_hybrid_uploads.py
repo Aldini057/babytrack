@@ -436,5 +436,96 @@ def test_family_share_public_view_and_guestbook_notes(client):
         assert "Calibrar Semanas" not in page.text
 
 
+def test_vitals_history_fetal_monitor_and_full_backup_zip(client):
+    """
+    Verifica las 3 mejoras opcionales + PIN 1419:
+    1. Historial cronológico de signos vitales (vitalsHistory) en /api/v1/medical/consultation-mode.
+    2. Herramientas de 2do y 3er trimestre (/api/v1/medical/fetal-logs): Contador de Pataditas y Cronómetro de Contracciones.
+    3. Descarga de Respaldo Completo en .zip (/api/v1/settings/backup.zip) con resumen_babytrack.json.
+    """
+    import json
+    import zipfile
+
+    # 1. Registrar 2 citas con signos vitales para probar la curva de evolución
+    client.post(
+        "/api/v1/medical/appointments",
+        json={
+            "appointmentType": "MEDICO",
+            "appointmentDate": "2026-11-10T10:00:00",
+            "doctorOrClinic": "Dra. García · Visita 1",
+            "momWeightKg": 60.2,
+            "bloodPressure": "110/70",
+            "babyHeartRateBpm": 145,
+            "status": "COMPLETED",
+        },
+    )
+    client.post(
+        "/api/v1/medical/appointments",
+        json={
+            "appointmentType": "MEDICO",
+            "appointmentDate": "2026-12-10T10:00:00",
+            "doctorOrClinic": "Dra. García · Visita 2",
+            "momWeightKg": 61.8,
+            "bloodPressure": "112/72",
+            "babyHeartRateBpm": 152,
+            "status": "COMPLETED",
+        },
+    )
+
+    cm_res = client.get("/api/v1/medical/consultation-mode")
+    assert cm_res.status_code == 200
+    cm_data = cm_res.json()
+    assert len(cm_data["vitalsHistory"]) >= 2
+    assert cm_data["vitalsHistory"][0]["momWeightKg"] == 60.2
+    assert cm_data["vitalsHistory"][-1]["momWeightKg"] == 61.8
+
+    # 2. Probar Contador de Pataditas y Cronómetro de Contracciones
+    kick_res = client.post(
+        "/api/v1/medical/fetal-logs",
+        json={
+            "logType": "PATADITAS",
+            "kickCount": 10,
+            "durationSeconds": 420,
+            "notes": "Muy activo después de cenar",
+        },
+    )
+    assert kick_res.status_code == 201
+    kick_data = kick_res.json()
+    assert kick_data["logType"] == "PATADITAS"
+    assert kick_data["kickCount"] == 10
+
+    cont_res = client.post(
+        "/api/v1/medical/fetal-logs",
+        json={
+            "logType": "CONTRACCION",
+            "durationSeconds": 55,
+            "intervalMinutes": 6.5,
+        },
+    )
+    assert cont_res.status_code == 201
+    cont_data = cont_res.json()
+    assert cont_data["logType"] == "CONTRACCION"
+    assert cont_data["intervalMinutes"] == 6.5
+
+    logs_list = client.get("/api/v1/medical/fetal-logs")
+    assert logs_list.status_code == 200
+    assert len(logs_list.json()) == 2
+
+    # 3. Probar descarga de Respaldo Completo (.zip)
+    zip_res = client.get("/api/v1/settings/backup.zip")
+    assert zip_res.status_code == 200
+    assert zip_res.headers["content-type"] == "application/zip"
+    with zipfile.ZipFile(io.BytesIO(zip_res.content), "r") as zf:
+        names = zf.namelist()
+        assert "resumen_babytrack.json" in names
+        exported = json.loads(zf.read("resumen_babytrack.json").decode("utf-8"))
+        assert exported["settings"]["dueDate"] == "2027-07-07"
+        assert len(exported["fetalMonitorLogs"]) == 2
+
+    # Eliminar un registro de monitoreo
+    del_res = client.delete(f"/api/v1/medical/fetal-logs/{kick_data['id']}")
+    assert del_res.status_code == 204
+
+
 
 

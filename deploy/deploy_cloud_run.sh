@@ -11,7 +11,7 @@ PROJECT_ID="${1:-$(gcloud config get-value project 2>/dev/null || true)}"
 REGION="${REGION:-us-central1}"
 SERVICE_NAME="${SERVICE_NAME:-babytrack}"
 BUCKET_NAME="${BUCKET_NAME:-${PROJECT_ID}-babytrack-data}"
-FAMILY_PIN="${FAMILY_ACCESS_PIN:-0707}"
+FAMILY_PIN="${FAMILY_ACCESS_PIN:-1419}"
 
 if [[ -z "$PROJECT_ID" ]]; then
   echo "❌ Error: Debes indicar tu PROJECT_ID de Google Cloud."

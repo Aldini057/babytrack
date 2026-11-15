@@ -25,7 +25,7 @@ class AuthStatusResponse(BaseModel):
 
 def create_session_token(pin: str, active_parent: str = "MAMA") -> str:
     parent = active_parent.upper() if active_parent and active_parent.upper() in {"MAMA", "PAPA"} else "MAMA"
-    secret = (settings.FAMILY_ACCESS_PIN or "0707").encode("utf-8")
+    secret = (settings.FAMILY_ACCESS_PIN or "1419").encode("utf-8")
     msg = f"authenticated:{parent}".encode("utf-8")
     sig = hmac.new(secret, msg, hashlib.sha256).hexdigest()
     return f"{parent}.{sig}"
@@ -46,7 +46,7 @@ def verify_session_token(token: Optional[str]) -> Optional[str]:
 @auth_router.post("/login", response_model=AuthStatusResponse)
 def login_with_pin(payload: PinLoginRequest, response: Response):
     """Verifica el PIN familiar compartido y establece una cookie firmada HttpOnly."""
-    expected_pin = (settings.FAMILY_ACCESS_PIN or "0707").strip()
+    expected_pin = (settings.FAMILY_ACCESS_PIN or "1419").strip()
     if payload.pin.strip() != expected_pin:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

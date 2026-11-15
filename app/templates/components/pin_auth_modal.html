@@ -1,10 +1,10 @@
-<!-- Modal de Seguridad Familiar Ligera (PIN Compartido + Selector Mamá/Papá) -->
+<!-- Candado de Seguridad Privada para Mamá y Papá (Bloqueo Automático con PIN 1419) -->
 <div 
   x-data="familyPinGate()"
   @open-pin-modal.window="open()"
-  x-show="isOpen"
+  x-show="isOpen || !authenticated"
   x-cloak
-  class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-md">
+  class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl">
 
   <div 
     @click.outside="if(authenticated) close()"
@@ -15,19 +15,19 @@
     </div>
 
     <div class="space-y-1">
-      <h3 class="text-base font-extrabold text-gray-900">Acceso Familiar Privado</h3>
+      <h3 class="text-base font-extrabold text-gray-900">Área Privada de Mamá y Papá</h3>
       <p class="text-xs text-theme-muted">
-        Protege la cápsula del bebé con el PIN familiar (<code class="font-bold">0707</code> por defecto) y elige tu perfil:
+        Ingresa tu PIN privado de 4 dígitos y selecciona tu perfil para desbloquear el panel completo:
       </p>
     </div>
 
     <!-- Estado actual si ya está autenticado -->
     <template x-if="authenticated">
       <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-800 space-y-2">
-        <p class="font-bold">✓ Sesión Familiar Activa (<span x-text="activeParent === 'MAMA' ? 'Mamá' : 'Papá'"></span>)</p>
+        <p class="font-bold">✓ Sesión Activa (<span x-text="activeParent === 'MAMA' ? 'Mamá' : 'Papá'"></span>)</p>
         <div class="flex space-x-2">
           <button type="button" @click="close()" class="w-1/2 py-1.5 rounded-xl bg-white border border-emerald-300 font-bold text-emerald-800">Continuar</button>
-          <button type="button" @click="logout()" class="w-1/2 py-1.5 rounded-xl bg-red-500 text-white font-bold">Bloquear / Salir</button>
+          <button type="button" @click="logout()" class="w-1/2 py-1.5 rounded-xl bg-red-500 text-white font-bold">Bloquear Pantalla</button>
         </div>
       </div>
     </template>
@@ -55,7 +55,7 @@
       </div>
 
       <div>
-        <label class="block text-xs font-bold text-gray-700 mb-1 text-center">PIN de Acceso Familiar</label>
+        <label class="block text-xs font-bold text-gray-700 mb-1 text-center">PIN de Acceso</label>
         <input 
           type="password" 
           inputmode="numeric"
@@ -68,17 +68,27 @@
       </div>
 
       <div class="flex space-x-2 pt-1">
-        <button type="button" @click="close()" class="w-1/2 py-2.5 border border-gray-200 rounded-xl text-xs font-bold text-gray-600">Cerrar</button>
-        <button type="submit" class="w-1/2 py-2.5 bg-theme-primary text-white rounded-xl text-xs font-bold shadow">Desbloquear</button>
+        <button x-show="authenticated" type="button" @click="close()" class="w-1/2 py-2.5 border border-gray-200 rounded-xl text-xs font-bold text-gray-600">Cerrar</button>
+        <button type="submit" :class="authenticated ? 'w-1/2' : 'w-full'" class="py-2.5 bg-theme-primary text-white rounded-xl text-xs font-bold shadow">
+          🔓 Desbloquear BabyTrack
+        </button>
       </div>
     </form>
+
+    <!-- Enlace directo por si un familiar o amigo entró a la raíz por error -->
+    <div class="pt-3 border-t border-gray-100">
+      <a href="/familia" class="inline-flex items-center justify-center space-x-1.5 text-xs font-bold text-theme-primary hover:underline">
+        <span>👨‍👩‍👧‍👦</span>
+        <span>¿Eres familiar o amigo? Ir a la Vista Familiar →</span>
+      </a>
+    </div>
   </div>
 </div>
 
 <script>
 function familyPinGate() {
   return {
-    isOpen: false,
+    isOpen: {{ 'false' if auth_status.authenticated else 'true' }},
     authenticated: {{ 'true' if auth_status.authenticated else 'false' }},
     activeParent: '{{ auth_status.activeParent }}',
     selectedParent: BabyTrack.getActiveParent(),
@@ -90,7 +100,9 @@ function familyPinGate() {
       this.isOpen = true;
     },
     close() {
-      this.isOpen = false;
+      if (this.authenticated) {
+        this.isOpen = false;
+      }
     },
     async submitPin() {
       this.errorMsg = '';
@@ -118,7 +130,7 @@ function familyPinGate() {
     async logout() {
       await fetch('/api/v1/auth/logout', { method: 'POST' });
       this.authenticated = false;
-      this.isOpen = false;
+      this.isOpen = true;
       window.dispatchEvent(new CustomEvent('auth-updated', { detail: { authenticated: false } }));
     }
   };

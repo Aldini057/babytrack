@@ -70,23 +70,69 @@
             </form>
           </div>
 
-          <!-- Últimos Signos Vitales -->
-          <div class="bg-white rounded-2xl p-3.5 border border-theme shadow-2xs space-y-2">
-            <p class="text-[11px] uppercase font-bold text-theme-muted tracking-wider">Últimos Signos Vitales</p>
+          <!-- Últimos Signos Vitales + Curva de Evolución -->
+          <div class="bg-white rounded-2xl p-3.5 border border-theme shadow-2xs space-y-3">
+            <div class="flex items-center justify-between">
+              <p class="text-[11px] uppercase font-bold text-theme-muted tracking-wider">Signos Vitales y Evolución</p>
+              <span x-show="data.vitalsHistory && data.vitalsHistory.length > 0" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200" x-text="data.vitalsHistory.length + ' registro(s)'"></span>
+            </div>
             <template x-if="data.latestVitals">
-              <div class="grid grid-cols-3 gap-2">
-                <div class="bg-blue-50/70 border border-blue-100 rounded-xl p-2.5 text-center">
-                  <p class="text-[10px] text-blue-700 font-bold">Peso Mamá</p>
-                  <p class="text-sm font-black text-blue-950" x-text="data.latestVitals.momWeightKg ? data.latestVitals.momWeightKg + ' kg' : '—'"></p>
+              <div class="space-y-3">
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="bg-blue-50/70 border border-blue-100 rounded-xl p-2.5 text-center">
+                    <p class="text-[10px] text-blue-700 font-bold">Peso Mamá</p>
+                    <p class="text-sm font-black text-blue-950" x-text="data.latestVitals.momWeightKg ? data.latestVitals.momWeightKg + ' kg' : '—'"></p>
+                  </div>
+                  <div class="bg-rose-50/70 border border-rose-100 rounded-xl p-2.5 text-center">
+                    <p class="text-[10px] text-rose-700 font-bold">Presión Art.</p>
+                    <p class="text-sm font-black text-rose-950" x-text="data.latestVitals.bloodPressure || '—'"></p>
+                  </div>
+                  <div class="bg-emerald-50/70 border border-emerald-100 rounded-xl p-2.5 text-center">
+                    <p class="text-[10px] text-emerald-700 font-bold">Latido Bebé</p>
+                    <p class="text-sm font-black text-emerald-950" x-text="data.latestVitals.babyHeartRateBpm ? data.latestVitals.babyHeartRateBpm + ' lpm' : '—'"></p>
+                  </div>
                 </div>
-                <div class="bg-rose-50/70 border border-rose-100 rounded-xl p-2.5 text-center">
-                  <p class="text-[10px] text-rose-700 font-bold">Presión Art.</p>
-                  <p class="text-sm font-black text-rose-950" x-text="data.latestVitals.bloodPressure || '—'"></p>
-                </div>
-                <div class="bg-emerald-50/70 border border-emerald-100 rounded-xl p-2.5 text-center">
-                  <p class="text-[10px] text-emerald-700 font-bold">Latido Bebé</p>
-                  <p class="text-sm font-black text-emerald-950" x-text="data.latestVitals.babyHeartRateBpm ? data.latestVitals.babyHeartRateBpm + ' lpm' : '—'"></p>
-                </div>
+
+                <!-- Mini-Gráfica de barras y tabla comparativa por semana -->
+                <template x-if="data.vitalsHistory && data.vitalsHistory.length > 0">
+                  <div class="pt-2 border-t border-gray-100 space-y-2">
+                    <p class="text-[10px] font-extrabold text-gray-500 uppercase">📈 Curva de Evolución por Cita</p>
+                    <!-- Barras visuales de peso -->
+                    <div class="flex items-end space-x-2 h-20 bg-gray-50/80 rounded-xl p-2.5 border border-gray-100 overflow-x-auto" x-show="data.vitalsHistory.some(v => v.momWeightKg)">
+                      <template x-for="vh in data.vitalsHistory.filter(v => v.momWeightKg)" :key="vh.appointmentId">
+                        <div class="flex flex-col items-center justify-end flex-1 min-w-[38px] h-full">
+                          <span class="text-[9px] font-extrabold text-blue-800 mb-0.5" x-text="vh.momWeightKg + 'kg'"></span>
+                          <div class="w-full max-w-[26px] rounded-t-md bg-blue-500 transition-all" :style="'height: ' + Math.max(20, Math.min(100, Math.round(((vh.momWeightKg - 40) / 60) * 100))) + '%'"></div>
+                          <span class="text-[9px] font-bold text-gray-500 mt-1" x-text="'S' + vh.gestationalWeek"></span>
+                        </div>
+                      </template>
+                    </div>
+
+                    <!-- Tabla compacta de historial de signos vitales -->
+                    <div class="overflow-x-auto">
+                      <table class="w-full text-[11px] text-left border-collapse">
+                        <thead>
+                          <tr class="text-[10px] uppercase text-gray-400 border-b">
+                            <th class="py-1">Semana</th>
+                            <th class="py-1">Peso</th>
+                            <th class="py-1">Presión</th>
+                            <th class="py-1">FCF Bebé</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                          <template x-for="vh in data.vitalsHistory" :key="'row-' + vh.appointmentId">
+                            <tr class="text-gray-700">
+                              <td class="py-1 font-bold text-theme-primary" x-text="'Sem ' + vh.gestationalWeek + '.' + vh.gestationalDay"></td>
+                              <td class="py-1 font-semibold" x-text="vh.momWeightKg ? (vh.momWeightKg + ' kg') : '—'"></td>
+                              <td class="py-1 font-semibold" x-text="vh.bloodPressure || '—'"></td>
+                              <td class="py-1 font-semibold text-emerald-700" x-text="vh.babyHeartRateBpm ? (vh.babyHeartRateBpm + ' lpm') : '—'"></td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </template>
               </div>
             </template>
             <template x-if="!data.latestVitals">

@@ -17,7 +17,7 @@ from app.api.v1.router import api_router
 from app.api.v1.endpoints_settings import get_or_create_settings
 from app.api.v1.endpoints_checklist import get_checklist_summary, list_checklist_items
 from app.api.v1.endpoints_journal import list_journal_notes
-from app.api.v1.endpoints_medical import list_appointments, list_studies
+from app.api.v1.endpoints_medical import list_appointments, list_fetal_monitor_logs, list_studies
 from app.api.v1.endpoints_media import list_moments, list_vault_documents
 from app.api.v1.endpoints_auth import get_auth_status
 from app.services.obstetric_calculator import ObstetricCalculatorService
@@ -153,10 +153,11 @@ def render_journal(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/medical", response_class=HTMLResponse, tags=["Web"])
 def render_medical(request: Request, db: Session = Depends(get_db)):
-    """Renderiza el Módulo de Control Prenatal, Estudios Híbridos y Galería de Ecos."""
+    """Renderiza el Módulo de Control Prenatal, Estudios Híbridos, Galería de Ecos y Monitor Fetal."""
     record = get_or_create_settings(db)
     studies = list_studies(study_type=None, appointment_id=None, db=db)
     appointments = list_appointments(status_filter=None, type_filter=None, db=db)
+    fetal_logs = list_fetal_monitor_logs(log_type=None, db=db)
     today_iso = ObstetricCalculatorService.get_local_date().isoformat()
 
     return templates.TemplateResponse(
@@ -167,6 +168,7 @@ def render_medical(request: Request, db: Session = Depends(get_db)):
             "google_calendar_id": (record.google_calendar_id or settings.GOOGLE_CALENDAR_ID or ""),
             "studies_json": json.dumps([s.model_dump(mode="json") for s in studies]),
             "appointments_json": json.dumps([a.model_dump(mode="json") for a in appointments]),
+            "fetal_logs_json": json.dumps([fl.model_dump(mode="json") for fl in fetal_logs]),
             "today_iso": today_iso,
             "auth_status": get_auth_status(request),
             "active_tab": "medical"
